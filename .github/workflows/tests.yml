@@ -2,10 +2,17 @@ name: Regression tests
 
 on:
   push:
+    branches: [main, 'maintenance/**']
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: regression-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -14,25 +21,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Install test dependencies
-        run: npm ci
-      - name: Check engine and script syntax
+      - name: Install locked test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check source and dictionaries
+        run: npm run check
+      - name: Check macOS shell syntax
+        if: runner.os != 'Windows'
         shell: bash
         run: |
-          node --check localization_engine.js
-          for f in src/*.js scripts/*.js; do
-            node --check "$f"
-          done
-      - name: Check dictionaries
-        run: node scripts/compare_dicts.js
-      - name: Run regression tests
+          bash -n scripts/run_macos.sh
+          for file in *.command; do bash -n "$file"; done
+      - name: Run isolated regression tests
         run: npm test

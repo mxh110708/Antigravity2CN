@@ -11,5 +11,5 @@ AGENTS.md
 codex/
 .codegraph/
 
-# Proxy configuration & injection modules (local only)
+# Keep unsupported legacy local configuration out of version control.
 proxy_config/

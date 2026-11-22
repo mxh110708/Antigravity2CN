@@ -19,11 +19,11 @@ test('usage labels retain percentages and full multi-unit reset durations', asyn
     assert.equal(doc.querySelector('#reset').textContent, '4 天 9 小时 后重置');
 });
 
-test('usage tooltips support long, compact and traditional duration labels', async t => {
-    const doc = await render(t, '<span id="long" title="Resets in 1 week, 2 days, 3 hours, 4 minutes">100% left</span><span id="short">Resets in &lt;1m</span>', { traditional: true });
-    assert.equal(doc.querySelector('#long').title, '1 週 2 天 3 小時 4 分鐘 後重設');
-    assert.equal(doc.querySelector('#long').textContent, '100% 剩餘');
-    assert.equal(doc.querySelector('#short').textContent, '<1 分鐘 後重設');
+test('usage tooltips support long and compact Simplified Chinese duration labels', async t => {
+    const doc = await render(t, '<span id="long" title="Resets in 1 week, 2 days, 3 hours, 4 minutes">100% left</span><span id="short">Resets in &lt;1m</span>');
+    assert.equal(doc.querySelector('#long').title, '1 周 2 天 3 小时 4 分钟 后重置');
+    assert.equal(doc.querySelector('#long').textContent, '100% 剩余');
+    assert.equal(doc.querySelector('#short').textContent, '<1 分钟 后重置');
 });
 
 test('unknown reset formats keep their original time instead of discarding it', async t => {

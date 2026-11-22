@@ -24,6 +24,8 @@ function loadEngine({ argv = [] } = {}) {
         process: {
             argv: [process.execPath, enginePath, ...argv],
             platform: process.platform,
+            getuid: process.getuid && process.getuid.bind(process),
+            geteuid: process.geteuid && process.geteuid.bind(process),
             env: { ...process.env },
             execPath: process.execPath,
             exit() { throw new Error('Runtime generation must not exit the test process.'); },
@@ -48,9 +50,8 @@ function loadEngine({ argv = [] } = {}) {
     return context;
 }
 
-function loadRuntime({ traditional = false, brandTitle = 'english' } = {}) {
+function loadRuntime({ brandTitle = 'english' } = {}) {
     const argv = ['--brand-title', brandTitle];
-    if (traditional) argv.push('--tw');
     return loadEngine({ argv }).generateJs();
 }
 

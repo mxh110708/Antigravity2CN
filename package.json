@@ -1,7 +1,11 @@
 {
   "name": "antigravity2-cn",
   "private": true,
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "scripts": {
+    "check": "node scripts/check_syntax.js && node scripts/validate_dicts.js",
     "test": "node --test tests/*-regressions.cjs"
   },
   "devDependencies": {

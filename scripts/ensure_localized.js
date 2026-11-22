@@ -8,7 +8,7 @@
  *   node scripts/ensure_localized.js                 # 仅检查并报告状态
  *   node scripts/ensure_localized.js --fix           # 未汉化且软件未运行时自动重新注入
  *   node scripts/ensure_localized.js --fix --launch  # 自动修复后启动 Antigravity
- * 支持 --tw / --sc、--brand-title <mode>、--install-dir <dir>（不支持 --huifu）。
+ * 支持 --brand-title <mode>、--install-dir <dir>（不支持 --huifu）。
  * 退出码：0 = 已汉化（或已修复）；2 = 未汉化且未修复；1 = 出错或修复失败。
  */
 const fs = require('fs');
@@ -19,6 +19,11 @@ const { readAsarLayout } = require('../src/asar_patcher');
 
 const ROOT = path.resolve(__dirname, '..');
 const SIGNATURE_START = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
+const LOCALE_MARKER = '/* ANTIGRAVITY PRIVATE LOCALE: zh-CN */';
+
+function createLogger() {
+    return { log: (...args) => console.log(...args), error: (...args) => console.error(...args) };
+}
 
 const BRAND_TITLE_ALIASES = {
     english: 'english',
@@ -33,54 +38,9 @@ const BRAND_TITLE_ALIASES = {
     zh: 'translated'
 };
 
-const LOG_TRANSLATIONS_TW = [
-    ['[提示] 自检启动器目前仅支持 Windows；macOS 请在更新后重新运行 双击安装中文汉化.command。', '[提示] 自檢啟動器目前僅支援 Windows；macOS 請在更新後重新執行 双击安装繁体中文.command。'],
-    ['[错误] 未找到 Antigravity 安装目录，可用 --install-dir 指定。', '[錯誤] 找不到 Antigravity 安裝目錄，可用 --install-dir 指定。'],
-    ['[检测] 安装目录: ', '[偵測] 安裝目錄: '],
-    ['[检测] 汉化状态: 已汉化', '[偵測] 漢化狀態: 已漢化'],
-    ['[检测] 汉化状态: 未汉化（可能已被官方自动更新覆盖）', '[偵測] 漢化狀態: 未漢化（可能已被官方自動更新覆蓋）'],
-    ['[检测] 运行状态: 正在运行', '[偵測] 執行狀態: 正在執行'],
-    ['[检测] 运行状态: 未运行', '[偵測] 執行狀態: 未執行'],
-    ['[偏好] 沿用已保存的汉化配置: ', '[偏好] 沿用已儲存的漢化設定: '],
-    ['繁体中文', '繁體中文'],
-    ['简体中文', '簡體中文'],
-    ['[提示] 检测到已下载的官方更新包: ', '[提示] 偵測到已下載的官方更新封裝: '],
-    ['退出 Antigravity 时它会被静默安装并覆盖汉化；下次通过本启动器打开会自动修复。', '結束 Antigravity 時它會被靜默安裝並覆蓋漢化；下次透過本啟動器開啟會自動修復。'],
-    ['[跳过] Antigravity 正在运行，为避免强制关闭您的会话，本次不自动修复。请完全退出后再运行。', '[跳過] Antigravity 正在執行，為避免強制關閉您的對話，本次不自動修復。請完全結束後再執行。'],
-    ['[修复] 正在重新注入汉化: ', '[修復] 正在重新注入漢化: '],
-    ['[√] 汉化已恢复。', '[√] 漢化已恢復。'],
-    ['[×] 重新注入失败（退出码 ', '[×] 重新注入失敗（結束碼 '],
-    ['），已中止启动客户端，请查看上方信息。', '），已中止啟動用戶端，請查看上方資訊。'],
-    ['[启动] 已启动 Antigravity。', '[啟動] 已啟動 Antigravity。'],
-    ['[提示] Antigravity 已在运行，未重复启动。', '[提示] Antigravity 已在執行，未重複啟動。'],
-    ['[×] 客户端当前未汉化，已中止启动（请使用 --fix 自动修复后再启动）。', '[×] 用戶端目前未漢化，已中止啟動（請使用 --fix 自動修復後再啟動）。'],
-    ['[错误] 未找到 ', '[錯誤] 找不到 '],
-    ['[错误]', '[錯誤]']
-];
-
-function translateTwLog(msg) {
-    let out = String(msg);
-    for (const [sc, tw] of LOG_TRANSLATIONS_TW) {
-        if (out.includes(sc)) {
-            out = out.split(sc).join(tw);
-        }
-    }
-    return out;
-}
-
-function createLogger(useTw) {
-    const formatArgs = args => (useTw ? args.map(a => (typeof a === 'string' ? translateTwLog(a) : a)) : args);
-    return {
-        log: (...args) => console.log(...formatArgs(args)),
-        error: (...args) => console.error(...formatArgs(args))
-    };
-}
-
 function parseArgs(argv) {
     let fix = false;
     let launchApp = false;
-    let explicitTw = false;
-    let explicitSc = false;
     let installDir = null;
     let brandTitle = null;
     const passthrough = [];
@@ -91,10 +51,10 @@ function parseArgs(argv) {
             fix = true;
         } else if (arg === '--launch') {
             launchApp = true;
-        } else if (arg === '--tw') {
-            explicitTw = true;
+        } else if (arg === '--tw' || arg.startsWith('--tw=')) {
+            throw new Error('本仓库仅支持简体中文，不支持 --tw。');
         } else if (arg === '--sc') {
-            explicitSc = true;
+            // Legacy Simplified flag is a no-op.
         } else if (arg === '--huifu') {
             throw new Error('ensure_localized.js 不支持 --huifu 参数；如需卸载恢复英文原版，请直接运行 localization_engine.js --huifu。');
         } else if (arg === '--install-dir') {
@@ -122,10 +82,6 @@ function parseArgs(argv) {
         }
     }
 
-    if (explicitTw && explicitSc) {
-        throw new Error('不能同时指定 --tw 与 --sc。');
-    }
-
     if (brandTitle !== null) {
         const normalizedBrand = BRAND_TITLE_ALIASES[brandTitle.toLowerCase()];
         if (!normalizedBrand) {
@@ -134,7 +90,7 @@ function parseArgs(argv) {
         brandTitle = normalizedBrand;
     }
 
-    return { fix, launch: launchApp, explicitTw, explicitSc, installDir, brandTitle, passthrough };
+    return { fix, launch: launchApp, installDir, brandTitle, passthrough };
 }
 
 function normalizeInstallDir(rawDir) {
@@ -268,7 +224,8 @@ function isRunning(installDir, execFileSyncFn = child_process.execFileSync) {
 }
 
 function isLocalized(asarPath) {
-    return fs.readFileSync(asarPath).indexOf(Buffer.from(SIGNATURE_START, 'utf8')) !== -1;
+    const body = fs.readFileSync(asarPath);
+    return body.includes(Buffer.from(SIGNATURE_START)) && body.includes(Buffer.from(LOCALE_MARKER));
 }
 
 function getPrefsFilePath() {
@@ -302,7 +259,7 @@ function saveLocalizationPref(installDir, pref) {
             }
         }
         data[path.resolve(installDir).toLowerCase()] = {
-            useTw: Boolean(pref.useTw),
+            language: 'zh-CN',
             brandTitle: String(pref.brandTitle || 'english'),
             updatedAt: new Date().toISOString()
         };
@@ -322,8 +279,6 @@ function detectAsarLocalizationPrefs(asarPath) {
         const idx = text.indexOf(SIGNATURE_START);
         if (idx === -1) return null;
         const injected = text.slice(idx);
-        const twMatch = injected.match(/\bUSE_TW\s*=\s*(true|false)\s*;/);
-        const useTw = twMatch ? twMatch[1] === 'true' : false;
 
         let brandTitle = 'english';
         const dictMatch = injected.match(/new Map\(Object\.entries\((\{[\s\S]*?\})\)\);/);
@@ -333,42 +288,30 @@ function detectAsarLocalizationPrefs(asarPath) {
                 brandTitle = dict.Antigravity === '' ? 'hidden' : 'translated';
             }
         }
-        return { useTw, brandTitle };
+        return { brandTitle };
     } catch (e) {
         return null;
     }
 }
 
-function resolveEffectivePrefs({ parsed, installDir, asarPath, localized }) {
+function resolveEffectivePrefs({ parsed, installDir, asarPath }) {
     const saved = loadLocalizationPref(installDir);
-    const detected = localized ? detectAsarLocalizationPrefs(asarPath) : null;
+    const detected = detectAsarLocalizationPrefs(asarPath);
 
-    let useTw = false;
     let inherited = false;
-    if (parsed.explicitSc) {
-        useTw = false;
-    } else if (parsed.explicitTw) {
-        useTw = true;
-    } else if (saved && typeof saved.useTw === 'boolean') {
-        useTw = saved.useTw;
-        inherited = true;
-    } else if (detected) {
-        useTw = detected.useTw;
-        inherited = true;
-    }
 
     let brandTitle = 'english';
     if (parsed.brandTitle !== null) {
         brandTitle = parsed.brandTitle;
     } else if (saved && saved.brandTitle) {
         brandTitle = saved.brandTitle;
-        if (!parsed.explicitTw && !parsed.explicitSc) inherited = true;
+        inherited = true;
     } else if (detected && detected.brandTitle) {
         brandTitle = detected.brandTitle;
-        if (!parsed.explicitTw && !parsed.explicitSc) inherited = true;
+        inherited = true;
     }
 
-    return { useTw, brandTitle, inherited };
+    return { brandTitle, inherited };
 }
 
 function pendingUpdate() {
@@ -376,7 +319,7 @@ function pendingUpdate() {
     return dir && fs.existsSync(dir) && fs.readdirSync(dir).some(f => /\.exe$/i.test(f)) ? dir : null;
 }
 
-function launch(installDir, logger = createLogger(false), spawnFn = child_process.spawn) {
+function launch(installDir, logger = createLogger(), spawnFn = child_process.spawn) {
     const exe = path.join(installDir, 'Antigravity.exe');
     if (!fs.existsSync(exe)) {
         logger.error(`[错误] 未找到 ${exe}`);
@@ -398,12 +341,11 @@ function main(argv = process.argv.slice(2), deps = {}) {
     try {
         parsed = parseArgs(argv);
     } catch (e) {
-        const earlyTw = argv.includes('--tw');
-        createLogger(earlyTw).error(`[错误] ${e.message}`);
+        createLogger().error(`[错误] ${e.message}`);
         return 1;
     }
 
-    const earlyLogger = createLogger(parsed.explicitTw);
+    const earlyLogger = createLogger();
     if (platform !== 'win32') {
         earlyLogger.log('[提示] 自检启动器目前仅支持 Windows；macOS 请在更新后重新运行 双击安装中文汉化.command。');
         return 1;
@@ -424,12 +366,12 @@ function main(argv = process.argv.slice(2), deps = {}) {
     const asarPath = path.join(installDir, 'resources', 'app.asar');
     let localized = isLocalized(asarPath);
     const prefs = resolveEffectivePrefs({ parsed, installDir, asarPath, localized });
-    const logger = createLogger(prefs.useTw);
+    const logger = createLogger();
 
     if (prefs.inherited) {
-        logger.log(`[偏好] 沿用已保存的汉化配置: ${prefs.useTw ? '繁体中文' : '简体中文'}, brand-title=${prefs.brandTitle}`);
+        logger.log(`[偏好] 沿用已保存的汉化配置: 简体中文, brand-title=${prefs.brandTitle}`);
     }
-    if (localized || parsed.explicitTw || parsed.explicitSc || parsed.brandTitle !== null) {
+    if (localized || parsed.brandTitle !== null) {
         saveLocalizationPref(installDir, prefs);
     }
 
@@ -462,7 +404,6 @@ function main(argv = process.argv.slice(2), deps = {}) {
                 '--install-dir',
                 installDir
             ];
-            if (prefs.useTw) engineArgs.push('--tw');
             for (const extra of parsed.passthrough) {
                 if (extra !== '--no-kill') engineArgs.push(extra);
             }

@@ -170,7 +170,7 @@ test('permission write-in translates reject label and placeholder while preservi
     assert.equal(w.document.getElementById('other').textContent, 'No');
 });
 
-test('Worked for / Thought for progress headers translate trailing update counts in SC and TC', async t => {
+test('Worked for / Thought for progress headers translate trailing update counts in Simplified Chinese', async t => {
     const html = `
       <button id="worked-combined">Worked for 3m · 1 update</button>
       <button id="thought-combined">Thought for 12s · 4 updates</button>
@@ -182,15 +182,6 @@ test('Worked for / Thought for progress headers translate trailing update counts
     assert.equal(w.document.getElementById('thought-combined').textContent, '已思考 12 秒 · 4 项更新');
     assert.equal(w.document.getElementById('split-header').textContent, '已工作 3 分钟 · 1 项更新');
     assert.equal(w.document.getElementById('standalone-update').textContent, '2 项更新');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('worked-combined').textContent, '已工作 3 分鐘 · 1 項更新');
-    assert.equal(domTw.window.document.getElementById('thought-combined').textContent, '已思考 12 秒 · 4 項更新');
-    assert.equal(domTw.window.document.getElementById('split-header').textContent, '已工作 3 分鐘 · 1 項更新');
-    assert.equal(domTw.window.document.getElementById('standalone-update').textContent, '2 項更新');
 });
 
 test('Swarm sidecar UI translates chrome, onboarding, overview cards, graph replay, legend and filters while isolating board messages and roster IDs', async t => {
@@ -335,27 +326,9 @@ test('Swarm sidecar UI translates chrome, onboarding, overview cards, graph repl
     assert.equal(nonSwarm.document.getElementById('plain-board').textContent, 'Board');
     assert.equal(nonSwarm.document.getElementById('plain-graph').textContent, 'Graph');
     assert.equal(nonSwarm.document.getElementById('plain-raw').textContent, 'Raw');
-
-    const domTw = createDom(swarmHtml);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('tab-graph').textContent, '關係圖');
-    assert.equal(domTw.window.document.getElementById('tab-raw').textContent, '原始資料');
-    assert.equal(domTw.window.document.getElementById('ov-progt').textContent, '3 / 10 項任務已完成');
-    assert.equal(domTw.window.document.getElementById('ov-blocked').textContent, '受阻');
-    assert.equal(domTw.window.document.getElementById('ov-dot').getAttribute('aria-label'), '排隊中');
-    assert.equal(domTw.window.document.getElementById('ov-quota').textContent, '@worker-2 配額已耗盡 — Rate limit exceeded');
-    assert.equal(domTw.window.document.getElementById('ov-notice').textContent, '解說員 (narrator-1) 已停止。可請協調器新增一個 (@narrator-1)。');
-    assert.equal(domTw.window.document.getElementById('ov-ack').textContent, '上次變更：「#42」');
-    assert.equal(domTw.window.document.getElementById('chip-idle').getAttribute('title'), 'worker-2：尚無訊息');
-    assert.equal(domTw.window.document.getElementById('unread-div').textContent, '新訊息');
-    assert.equal(domTw.window.document.getElementById('replay-label').textContent, '10 / 10 · #10 於 9:00 (+15 分鐘 25 秒)');
-    assert.equal(domTw.window.document.getElementById('replay-timing').options[0].textContent, '等速重播');
-    assert.equal(domTw.window.document.getElementById('lg-4').textContent, '@all 廣播訊息（開啟「展開 @all」時連線）');
 });
 
-test('subagent incoming message header and input placeholder translate in SC and TC', async t => {
+test('subagent incoming message header and input placeholder translate in Simplified Chinese', async t => {
     const html = `
       <div>
         <button id="incoming-parent">Message from Parent Agent</button>
@@ -369,14 +342,6 @@ test('subagent incoming message header and input placeholder translate in SC and
     assert.equal(w.document.getElementById('incoming-role').textContent, '来自 Codebase Researcher 的消息');
     assert.equal(w.document.getElementById('placeholder-full').textContent, '向子代理发送消息，使用 @ 提及，/ 执行操作');
     assert.equal(w.document.getElementById('placeholder-short').textContent, '向子代理发送消息，使用 @ 提及');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('incoming-parent').textContent, '來自父級代理的訊息');
-    assert.equal(domTw.window.document.getElementById('placeholder-full').textContent, '向子代理傳送訊息，使用 @ 提及，/ 執行操作');
-    assert.equal(domTw.window.document.getElementById('placeholder-short').textContent, '向子代理傳送訊息，使用 @ 提及');
 });
 
 test('NUX onboarding split TextNodes and post-onboarding welcome tip translate without global single-word pollution', async t => {
@@ -415,15 +380,6 @@ test('NUX onboarding split TextNodes and post-onboarding welcome tip translate w
     w.document.body.appendChild(reactCard3);
     await settle();
     assert.equal(reactCard3.textContent, 'Antigravity 的智能体功能强大，可帮助您比以往更好、更快地完成更多工作，但仍请务必核验智能体执行的操作。');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('nux-card1-split').textContent, '從設定與市集中自訂您在代理、外掛程式及產品上的各項體驗。我們不會向您顯示廣告，也不會讓廣告客戶影響 Antigravity 所說的內容。');
-    assert.equal(domTw.window.document.getElementById('nux-card3').textContent, 'Antigravity 的代理功能強大，能協助您比以往更好、更快地完成更多工作，但仍請務必驗證代理執行的操作。');
-    assert.equal(domTw.window.document.getElementById('welcome-tip').textContent, '提示： 按 ⌘⇧A 即可切換至 Gemini 應用程式。您的代理會在背景繼續執行。');
-    assert.equal(domTw.window.document.getElementById('random-says').textContent, 'says.');
 });
 
 test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plugin credentials translate without single-word pollution', async t => {
@@ -514,31 +470,6 @@ test('v2.32.1 SSH, macOS permissions, multi-agent layout, draft capsule and plug
     assert.equal(w.document.getElementById('plain-design').textContent, 'Design');
     assert.equal(w.document.getElementById('plain-icon').getAttribute('aria-label'), 'Icon');
     assert.equal(w.document.getElementById('plain-color').getAttribute('aria-label'), 'Color');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('perm-badge-miss').textContent, '未授權');
-    assert.equal(domTw.window.document.getElementById('perm-tip').textContent, '按一下 開啟 ↗ 以開啟 macOS「隱私權與安全性」。');
-    assert.equal(domTw.window.document.getElementById('layout-label').textContent, '版面配置');
-    assert.equal(domTw.window.document.getElementById('layout-select').getAttribute('aria-label'), '版面配置');
-    assert.equal(domTw.window.document.getElementById('opt-grid').textContent, '網格');
-    assert.equal(domTw.window.document.getElementById('tile-focus').getAttribute('title'), 'Codebase · worker-1（聚焦此窗格）');
-    assert.equal(domTw.window.document.getElementById('icon-rg').getAttribute('aria-label'), '圖示');
-    assert.equal(domTw.window.document.getElementById('color-rg').getAttribute('aria-label'), '顏色');
-    assert.equal(domTw.window.document.getElementById('draft-btn').getAttribute('aria-label'), '恢復 2 則評論草稿');
-    assert.equal(domTw.window.document.getElementById('draft-btn').textContent, '2 則草稿');
-    assert.equal(domTw.window.document.getElementById('plugin-creds').textContent, 'GitHub, Linear 的登入資訊會隨您的帳戶儲存在雲端。其他憑證保留在本機上。憑證僅會傳送至所列出的網域。');
-    assert.equal(domTw.window.document.getElementById('sandbox-warn-two').textContent, '預設 (Default) 與 自動 (Auto) 需要終端機沙箱，但此主機無法使用。');
-    assert.equal(domTw.window.document.getElementById('sandbox-warn-one').textContent, '預設 (Default) 需要終端機沙箱，但此主機無法使用。');
-    assert.equal(domTw.window.document.getElementById('org-managed').textContent, '由您的組織管理');
-    assert.equal(domTw.window.document.getElementById('msg-ing').textContent, '正在傳送訊息給 Codebase Researcher');
-    assert.equal(domTw.window.document.getElementById('msg-ed').textContent, '已傳送訊息給 Codebase Researcher');
-    assert.equal(domTw.window.document.getElementById('save-err').textContent, '儲存專案設定失敗：Network error');
-    assert.equal(domTw.window.document.getElementById('plain-click').textContent, 'Click');
-    assert.equal(domTw.window.document.getElementById('plain-missing').textContent, 'Missing');
-    assert.equal(domTw.window.document.getElementById('plain-design').textContent, 'Design');
 });
 
 test('protected containers isolate attributes and scripts while contextual siblings and duration boundaries hold', async t => {
@@ -584,7 +515,7 @@ test('protected containers isolate attributes and scripts while contextual sibli
     assert.equal(w.document.getElementById('dur-m').textContent, '已思考 5 分钟');
 });
 
-test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best of N external descriptions translate in SC and TC', async t => {
+test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best of N external descriptions translate in Simplified Chinese', async t => {
     const html = `
       <div>
         <h2 id="voice-title">Choose Antigravity's Voice</h2>
@@ -622,17 +553,6 @@ test('v2.32.2 template literals, voice mic prompts, plugin/skill labels and Best
     assert.equal(w.document.getElementById('slash-compact').children[1].textContent, '立即压缩当前对话（总结历史记录以释放上下文窗口）。');
     assert.equal(w.document.getElementById('slash-plan').children[0].textContent, 'plan');
     assert.equal(w.document.getElementById('slash-plan').children[1].textContent, '在执行任务前仔细制定计划。');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('voice-title').textContent, '選擇 Antigravity 的聲音');
-    assert.equal(domTw.window.document.getElementById('mic-split').textContent, '麥克風已被封鎖。請在以下位置允許存取：隱私權設定。');
-    assert.equal(domTw.window.document.getElementById('partner-plugins').textContent, '以 Google 外掛程式建構');
-    assert.equal(domTw.window.document.getElementById('unfold-btn').getAttribute('title'), '展開第 10-25 行');
-    assert.equal(domTw.window.document.getElementById('slash-compact').children[1].textContent, '立即壓縮目前對話（摘要歷史記錄以釋放上下文視窗）。');
-    assert.equal(domTw.window.document.getElementById('slash-plan').children[1].textContent, '在執行任務前仔細擬定計畫。');
 });
 
 test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and handles See all & mixed Show more', async t => {
@@ -661,15 +581,9 @@ test('runtime guards non-DOM sandboxes, preserves restore_page TextNode, and han
     assert.equal(w.document.getElementById('badge').textContent, 'Show 5');
     assert.equal(w.document.getElementById('mixed-show').lastChild.nodeValue, ' 个...');
     assert.equal(w.document.getElementById('see-all').textContent, '显示全部 (5)');
-
-    const domTw = createDom('<button id="see-all">See all (5)</button>');
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('see-all').textContent, '顯示全部 (5)');
 });
 
-test('v2.33.0 browsing data, keybinding scheme, bundles, coordinator pickers, permissions and dynamic prompts translate in SC and TC without single-word pollution', async t => {
+test('v2.33.0 browsing data, keybinding scheme, bundles, coordinator pickers, permissions and dynamic prompts translate in Simplified Chinese without single-word pollution', async t => {
     const html = `
       <div>
         <h2 id="browsing-title">Clear Browsing Data?</h2>
@@ -795,48 +709,9 @@ test('v2.33.0 browsing data, keybinding scheme, bundles, coordinator pickers, pe
     assert.equal(w.document.getElementById('w-robot').textContent, 'Robot');
     assert.equal(w.document.getElementById('w-flask').textContent, 'Flask');
     assert.equal(w.document.getElementById('plain-radio').getAttribute('aria-label'), 'Code');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('browsing-title').textContent, '清除瀏覽資料？');
-    assert.equal(domTw.window.document.getElementById('browsing-history').textContent, '瀏覽記錄');
-    assert.equal(domTw.window.document.getElementById('cookies-site').textContent, '依網站檢視 Cookie');
-    assert.equal(domTw.window.document.getElementById('kb-scheme').textContent, '快速鍵方案');
-    assert.equal(domTw.window.document.getElementById('browser-agent').textContent, '啟用瀏覽器代理');
-    assert.equal(domTw.window.document.getElementById('add-bundle').textContent, '新增套件');
-    assert.equal(domTw.window.document.getElementById('rm-bundle').textContent, '移除套件');
-    assert.equal(domTw.window.document.getElementById('sq-unarch').textContent, '請先取消封存主對話再插入');
-    assert.equal(domTw.window.document.getElementById('cookie-err').textContent, '無法刪除以下網站的 Cookie：example.com，請重試。');
-    assert.equal(domTw.window.document.getElementById('no-match-split').textContent, '沒有符合「alpha.dev」的網站。');
-    assert.equal(domTw.window.document.getElementById('no-match-full').textContent, '沒有符合「beta.dev」的網站。');
-    assert.equal(domTw.window.document.getElementById('kb-filter').textContent, '檢視即時按鍵繫結或錄製自訂組合鍵，目前篩選範圍為 antigravity. 指令。');
-    assert.equal(domTw.window.document.getElementById('signin-remote').textContent, '您正在 devbox-01 上登入。登入狀態僅保留在該機器上。');
-    assert.equal(domTw.window.document.getElementById('go-turn').getAttribute('aria-label'), '前往第 3 / 12 輪');
-    assert.equal(domTw.window.document.getElementById('plan-steps').getAttribute('aria-label'), '計畫，已完成 2 / 5 步');
-    assert.equal(domTw.window.document.getElementById('rm-shortcut').getAttribute('aria-label'), '移除 命令選擇區 的快速鍵 Cmd+K');
-    assert.equal(domTw.window.document.getElementById('reset-cmd').getAttribute('aria-label'), '將 命令選擇區 重設為預設值');
-    assert.equal(domTw.window.document.getElementById('no-bundles').textContent, '找不到符合以下條件的套件：');
-    assert.equal(domTw.window.document.getElementById('no-plugins-q').textContent, '找不到與「lint」相符的外掛程式');
-    assert.equal(domTw.window.document.getElementById('bundle-prefix').textContent, '3 個外掛程式。停用或移除此套件僅會影響由它安裝的項目。');
-    assert.equal(domTw.window.document.getElementById('comment-pg').textContent, '第 2 頁的評論');
-    assert.equal(domTw.window.document.getElementById('edit-comment').textContent, '編輯評論：fix typo');
-    assert.equal(domTw.window.document.getElementById('export-err').textContent, '匯出成品失敗');
-    assert.equal(domTw.window.document.getElementById('ico-code').getAttribute('aria-label'), '程式碼');
-    assert.equal(domTw.window.document.getElementById('col-blue').getAttribute('aria-label'), '藍色');
-    assert.equal(domTw.window.document.getElementById('perm-q1').textContent, '是否允許從此網站進行瀏覽器下載？');
-    assert.equal(domTw.window.document.getElementById('loc-btn').getAttribute('aria-label'), '代理執行位置，目前：此電腦');
-    assert.equal(domTw.window.document.getElementById('model-unavail').textContent, '無法使用');
-    assert.equal(domTw.window.document.getElementById('plain-unavail').textContent, 'Unavailable');
-    assert.equal(domTw.window.document.getElementById('model-avail-1').textContent, 'Claude 3.7 Sonnet 目前已向 Pro 使用者 開放。');
-    assert.equal(domTw.window.document.getElementById('model-avail-2').textContent, 'Gemini 2.5 Pro 現已向 Google AI Pro 開放。第三方模型存取權限將自 2026 年 5 月 15 日 起不再提供。');
-    assert.equal(domTw.window.document.getElementById('model-dep-only').textContent, 'Claude 3.5 Sonnet 將自 2026 年 6 月 1 日 起不再於您目前的方案中提供');
-    assert.equal(domTw.window.document.getElementById('model-dep-3p').textContent, '第三方模型存取權限將自 2026 年 7 月 15 日 起不再於您目前的方案中提供。');
-    assert.equal(domTw.window.document.getElementById('w-code').textContent, 'Code');
 });
 
-test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates and contextual hints translate in SC and TC', async t => {
+test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates and contextual hints translate in Simplified Chinese', async t => {
     const html = `
       <div>
         <h2 id="orch-title">Orchestrator Settings</h2>
@@ -865,18 +740,4 @@ test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates an
     assert.equal(w.document.getElementById('send-hint').querySelector('span').textContent, '消息现已改为立即发送。可在 ');
     assert.equal(w.document.getElementById('sys-click').querySelector('span').textContent, '在“系统设置”中，点击 ');
     assert.equal(w.document.getElementById('already-on').querySelector('span').textContent, '已经开启？请选择 ');
-
-    const domTw = createDom(html);
-    t.after(() => domTw.window.close());
-    domTw.window.eval(loadRuntime({ traditional: true }));
-    await settle();
-    assert.equal(domTw.window.document.getElementById('orch-title').textContent, '編排器設定');
-    assert.equal(domTw.window.document.getElementById('cust-sb').getAttribute('aria-label'), '自訂側邊欄');
-    assert.equal(domTw.window.document.getElementById('screen-lock').textContent, '螢幕已鎖定：在您解鎖前，代理無法使用此 Mac');
-    assert.equal(domTw.window.document.getElementById('disc-err').textContent, '無法中斷 GitHub 的連線：network timeout');
-    assert.equal(domTw.window.document.getElementById('load-err').textContent, '載入頁面 Settings 失敗：500');
-    assert.equal(domTw.window.document.getElementById('more-opt').getAttribute('aria-label'), 'devbox-01 的更多選項');
-    assert.equal(domTw.window.document.getElementById('new-conv').textContent, '開啟此 工作區 的新對話畫面');
-    assert.equal(domTw.window.document.getElementById('send-hint').querySelector('span').textContent, '訊息現已改為立即傳送。可在 ');
-    assert.equal(domTw.window.document.getElementById('sys-click').querySelector('span').textContent, '在「系統設定」中，按一下 ');
 });

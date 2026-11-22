@@ -234,15 +234,15 @@ test('patchTrayJs count replacement is bounded and cleanTrayJsContent restores o
         'function insertTrayMenuItem(position, options) {}',
     ].join('\n');
 
-    const sc = patchTrayJs(originalTray, false);
+    const sc = patchTrayJs(originalTray);
     assert.match(sc, /个智能体运行中/);
     assert.match(sc, /const tail = "keep ' running'; untouched";/);
 
-    const tc = patchTrayJs(sc, true);
-    assert.match(tc, /個代理執行中/);
-    assert.doesNotMatch(tc, /个智能体运行中/);
+    const secondPass = patchTrayJs(sc);
+    assert.match(secondPass, /个智能体运行中/);
+    assert.equal(secondPass, sc);
 
-    const scAgain = patchTrayJs(tc, false);
+    const scAgain = patchTrayJs(secondPass);
     assert.equal(scAgain, sc);
 });
 
@@ -261,14 +261,14 @@ test('validateAsarCandidate allows newly patched main-process dialog modules and
 
     patchAsarArchive(src, dst, new Map([
         ['dist/preload.js', orig => `${orig}\n${signature}`],
-        ['dist/main.js', orig => patchMainProcessModule('dist/main.js', orig, false)],
-        ['dist/provisionSplash.js', orig => patchMainProcessModule('dist/provisionSplash.js', orig, true)],
+        ['dist/main.js', orig => patchMainProcessModule('dist/main.js', orig)],
+        ['dist/provisionSplash.js', orig => patchMainProcessModule('dist/provisionSplash.js', orig)],
     ]));
     validateAsarCandidate(src, dst, signature);
 
     const layout = readAsarLayout(dst);
     assert.match(layout.files.get('dist/main.js').body.toString('utf8'), /确认退出/);
-    assert.match(layout.files.get('dist/provisionSplash.js').body.toString('utf8'), /正在設定 WSL：/);
+    assert.match(layout.files.get('dist/provisionSplash.js').body.toString('utf8'), /正在初始化 WSL：/);
 
     if (process.platform === 'win32') {
         const fakeAppData = path.join(root, 'AppData', 'Roaming');
@@ -302,8 +302,8 @@ test('requiring localization_engine from node -e does not invoke main() or kill 
     assert.equal(out, 'function');
 });
 
-test('readAsarLayout rejects invalid headerSize2 framing and compareDicts rejects non-object JSON', t => {
-    const { compareDicts } = require('../scripts/compare_dicts');
+test('readAsarLayout rejects invalid headerSize2 framing and validateDicts rejects non-object JSON', t => {
+    const { validateDicts } = require('../scripts/validate_dicts');
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag2cn-guard-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
@@ -315,17 +315,14 @@ test('readAsarLayout rejects invalid headerSize2 framing and compareDicts reject
     assert.throws(() => readAsarLayout(badAsar), /Truncated ASAR header/);
 
     const tmpSc = path.join(root, 'dicts');
-    const tmpTw = path.join(root, 'dicts_tw');
     fs.mkdirSync(tmpSc, { recursive: true });
-    fs.mkdirSync(tmpTw, { recursive: true });
     fs.writeFileSync(path.join(tmpSc, 'test.json'), '["not-an-object"]', 'utf8');
-    fs.writeFileSync(path.join(tmpTw, 'test.json'), '{}', 'utf8');
-    assert.equal(compareDicts(tmpSc, tmpTw), false);
+    assert.equal(validateDicts(tmpSc), false);
 });
 
 test('patchTrayJs and patchUtilsJs guard missing actions and missing win variables at runtime', () => {
     const traySample = 'function createTray(actions) { const contextMenu = actions || []; tray.setContextMenu(contextMenu); return contextMenu; } function emptyTray() { const contextMenu = []; tray.setContextMenu(contextMenu); }';
-    const trayPatched = patchTrayJs(traySample, false);
+    const trayPatched = patchTrayJs(traySample);
     assert.match(trayPatched, /TRAY TRANSLATION START/);
     assert.match(trayPatched, /TRAY DOUBLE CLICK START/);
     const fakeTray = { setContextMenu() {}, on() {} };
@@ -333,7 +330,7 @@ test('patchTrayJs and patchUtilsJs guard missing actions and missing win variabl
     assert.equal(builtMenu[0].label, '退出');
 
     const trayWithoutActionsSample = 'function createTray() { const contextMenu = []; tray.setContextMenu(contextMenu); }';
-    const trayWithoutActionsPatched = patchTrayJs(trayWithoutActionsSample, false);
+    const trayWithoutActionsPatched = patchTrayJs(trayWithoutActionsSample);
     assert.doesNotThrow(() => {
         vm.runInNewContext(`${trayWithoutActionsPatched}; createTray();`, { tray: fakeTray });
     });
@@ -394,6 +391,8 @@ test('resignAppOnMac and canRestartApp skip non-bundle staging dirs while preser
             process: {
                 argv: [process.execPath, enginePath],
                 platform: 'darwin',
+                getuid: () => 501,
+                geteuid: () => 501,
                 env: { ...process.env },
                 execPath: process.execPath,
                 exit() { throw new Error('unexpected exit'); },
@@ -403,7 +402,7 @@ test('resignAppOnMac and canRestartApp skip non-bundle staging dirs while preser
                     return {
                         spawnSync(cmd, args) {
                             spawned.push({ cmd, args });
-                            if (cmd === 'codesign') return { status: codesignStatus, stdout: '', stderr: codesignStatus === 0 ? '' : 'codesign failed' };
+                            if (cmd === '/usr/bin/codesign') return { status: codesignStatus, stdout: '', stderr: codesignStatus === 0 ? '' : 'codesign failed' };
                             return { status: 0, stdout: '', stderr: '' };
                         },
                         execFileSync() { return ''; },
@@ -445,7 +444,7 @@ test('resignAppOnMac and canRestartApp skip non-bundle staging dirs while preser
     const simFail = createMacEngine(1);
     assert.equal(simFail.ctx.resignAppOnMac(realResources), false);
     assert.equal(simFail.ctx.canRestartApp(realBundle), true);
-    assert.ok(simFail.spawned.some(c => c.cmd === 'codesign'));
+    assert.ok(simFail.spawned.some(c => c.cmd === '/usr/bin/codesign'));
 });
 
 test('patchLoadingOverlayJs silently skips when <div class="text"> is absent and translates legacy markup', () => {
@@ -454,13 +453,11 @@ test('patchLoadingOverlayJs silently skips when <div class="text"> is absent and
     console.warn = (...args) => warnings.push(args.join(' '));
     try {
         const modernOverlay = '<body><svg class="logo"></svg></body>';
-        assert.equal(patchLoadingOverlayJs(modernOverlay, false), modernOverlay);
-        assert.equal(patchLoadingOverlayJs(modernOverlay, true), modernOverlay);
+        assert.equal(patchLoadingOverlayJs(modernOverlay), modernOverlay);
         assert.equal(warnings.length, 0);
 
         const legacyOverlay = '<div class="text">Loading Antigravity</div>';
-        assert.match(patchLoadingOverlayJs(legacyOverlay, false), /正在加载 Antigravity…/);
-        assert.match(patchLoadingOverlayJs(legacyOverlay, true), /正在載入 Antigravity…/);
+        assert.match(patchLoadingOverlayJs(legacyOverlay), /正在加载 Antigravity…/);
         assert.equal(warnings.length, 0);
     } finally {
         console.warn = origWarn;
@@ -480,15 +477,11 @@ test('main-process patches cover v2.33.0 wizardHtml, remoteManager dialogs and r
         '<button class="btn-primary" id="btn-skip">Explore the new Antigravity</button>'
     ].join('\n');
 
-    const wizSc = patchMainProcessModule('dist/ideInstall/wizardHtml.js', wizardSample, false);
+    const wizSc = patchMainProcessModule('dist/ideInstall/wizardHtml.js', wizardSample);
     assert.match(wizSc, /欢迎使用 Antigravity/);
     assert.match(wizSc, /正在设置…/);
     assert.match(wizSc, /探索全新 Antigravity/);
 
-    const wizTw = patchMainProcessModule('dist/ideInstall/wizardHtml.js', wizardSample, true);
-    assert.match(wizTw, /歡迎使用 Antigravity/);
-    assert.match(wizTw, /正在設定…/);
-    assert.match(wizTw, /程式碼編輯器/);
 
     const remoteSample = [
         "title: 'Choose another SSH config file',",
@@ -508,7 +501,7 @@ test('main-process patches cover v2.33.0 wizardHtml, remoteManager dialogs and r
         "detail: `Any ${what} still running on it stops. The server starts again with this app's version.`,"
     ].join('\n');
 
-    const rmSc = patchMainProcessModule('dist/remote/remoteManager.js', remoteSample, false);
+    const rmSc = patchMainProcessModule('dist/remote/remoteManager.js', remoteSample);
     assert.match(rmSc, /选择其他 SSH 配置文件/);
     assert.match(rmSc, /buttons: \['允许', '不允许'\]/);
     assert.match(rmSc, /麦克风权限/);
@@ -517,10 +510,6 @@ test('main-process patches cover v2.33.0 wizardHtml, remoteManager dialogs and r
     assert.match(rmSc, /智能体或任务/);
     assert.match(rmSc, /buttons: \['重启', '稍后'\]/);
 
-    const rmTw = patchMainProcessModule('dist/remote/remoteManager.js', remoteSample, true);
-    assert.match(rmTw, /buttons: \['允許', '不允許'\]/);
-    assert.match(rmTw, /共用家目錄/);
-    assert.match(rmTw, /代理、任務或終端機/);
 
     const sshSample = [
         "(who) => (isAccount(who) ? ['Password', who] : undefined),",
@@ -528,7 +517,7 @@ test('main-process patches cover v2.33.0 wizardHtml, remoteManager dialogs and r
         "return `Question from ${who}`;",
         '<button id="cancel" class="custom-sec">Cancel</button><button id="continue" class="custom-cta">Continue</button>'
     ].join('\n');
-    const sshSc = patchMainProcessModule('dist/remote/sshPrompts.js', sshSample, false);
+    const sshSc = patchMainProcessModule('dist/remote/sshPrompts.js', sshSample);
     assert.match(sshSc, /\['密码', who\]/);
     assert.match(sshSc, /来自 \$\{who\} 的询问/);
     assert.match(sshSc, />取消<\/button><button id="continue" class="custom-cta">继续<\/button>/);
@@ -541,7 +530,7 @@ test('main-process patches cover v2.33.0 wizardHtml, remoteManager dialogs and r
     });
     patchAsarArchive(src, dst, new Map([
         ['dist/preload.js', orig => `${orig}\n${signature}`],
-        ['dist/ideInstall/wizardHtml.js', orig => patchMainProcessModule('dist/ideInstall/wizardHtml.js', orig, false)],
+        ['dist/ideInstall/wizardHtml.js', orig => patchMainProcessModule('dist/ideInstall/wizardHtml.js', orig)],
     ]));
     assert.doesNotThrow(() => validateAsarCandidate(src, dst, signature));
 });
@@ -568,12 +557,13 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
         '--launch',
         `--install-dir=${fakeRes}`,
         '--brand-title=hidden',
-        '--tw'
+        '--sc'
     ]);
     assert.equal(parsed.fix, true);
     assert.equal(parsed.launch, true);
     assert.equal(parsed.brandTitle, 'hidden');
-    assert.equal(parsed.explicitTw, true);
+    assert.throws(() => ensure.parseArgs(['--tw']), /仅支持简体中文/);
+    assert.throws(() => ensure.parseArgs(['--tw=true']), /仅支持简体中文/);
     assert.equal(ensure.normalizeInstallDir(parsed.installDir), path.resolve(fakeInstall));
     assert.throws(() => ensure.parseArgs(['--huifu']), /不支持 --huifu/);
     assert.throws(() => ensure.parseArgs(['--install-dir=']), /不能为空/);
@@ -641,7 +631,9 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
     });
     assert.equal(code, 1);
     assert.equal(launchCalled, false);
-    assert.ok(capturedEngineArgs.includes('--tw'));
+    assert.equal(capturedEngineArgs.some(arg => arg.startsWith('--tw')), false);
+    assert.equal(ensure.loadLocalizationPref(fakeInstall).language, 'zh-CN');
+    assert.equal(ensure.loadLocalizationPref(fakeInstall).useTw, undefined);
     assert.ok(capturedEngineArgs.includes('--brand-title'));
     assert.ok(capturedEngineArgs.includes('hidden'));
     assert.ok(capturedEngineArgs.includes('--no-kill'));
@@ -651,7 +643,6 @@ test('Windows batch launchers use pure 7-bit ASCII with CRLF and no chcp to stay
     const repoRoot = path.resolve(__dirname, '..');
     const batFiles = [
         '双击安装中文汉化.bat',
-        '双击安装繁体中文.bat',
         '双击卸载还原官方英文.bat',
         '启动Antigravity(自动检查汉化).bat'
     ];
@@ -668,7 +659,7 @@ test('Windows batch launchers use pure 7-bit ASCII with CRLF and no chcp to stay
     }
 });
 
-test('interactive brand prompt resolves choices in SC/TC and skips prompting when --brand-title is explicit', async t => {
+test('interactive Simplified brand prompt resolves choices and skips prompting when --brand-title is explicit', async t => {
     const repoRoot = path.resolve(__dirname, '..');
     const { PassThrough } = require('stream');
     const engine = require(path.join(repoRoot, 'localization_engine.js'));
@@ -680,7 +671,7 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
     const logsSc = [];
     const inSc = new PassThrough();
     const outSc = new PassThrough();
-    const pSc = engine.promptBrandTitleMode(false, {
+    const pSc = engine.promptBrandTitleMode({
         input: inSc,
         output: outSc,
         log: (line) => logsSc.push(line)
@@ -689,17 +680,17 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
     assert.equal(await pSc, 'hidden');
     assert.ok(logsSc.some(l => l.includes('请选择左上角品牌显示方式')));
 
-    const logsTw = [];
-    const inTw = new PassThrough();
-    const outTw = new PassThrough();
-    const pTw = engine.promptBrandTitleMode(true, {
-        input: inTw,
-        output: outTw,
-        log: (line) => logsTw.push(line)
+    const logsEmpty = [];
+    const inEmpty = new PassThrough();
+    const outEmpty = new PassThrough();
+    const pEmpty = engine.promptBrandTitleMode({
+        input: inEmpty,
+        output: outEmpty,
+        log: (line) => logsEmpty.push(line)
     });
-    inTw.end();
-    assert.equal(await pTw, 'english');
-    assert.ok(logsTw.some(l => l.includes('請選擇左上角品牌顯示方式')));
+    inEmpty.end();
+    assert.equal(await pEmpty, 'english');
+    assert.ok(logsEmpty.some(l => l.includes('请选择左上角品牌显示方式')));
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag-interactive-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -711,12 +702,12 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
     const fakeAppData = path.join(root, 'AppData');
     const resInteractive = childProcess.spawnSync(
         process.execPath,
-        [path.join(repoRoot, 'localization_engine.js'), '--interactive', `--install-dir=${fakeInstall}`, '--no-kill'],
+        ['--require', path.join(repoRoot, 'tests/helpers/isolated-installer.cjs'), path.join(repoRoot, 'localization_engine.js'), '--interactive', `--install-dir=${fakeInstall}`, '--no-kill'],
         {
             cwd: repoRoot,
             input: '2\n',
             encoding: 'utf8',
-            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData }
+            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData, AG_TEST_HOME: root }
         }
     );
     assert.equal(resInteractive.status, 0, resInteractive.stderr || resInteractive.stdout);
@@ -728,12 +719,12 @@ test('interactive brand prompt resolves choices in SC/TC and skips prompting whe
 
     const resExplicit = childProcess.spawnSync(
         process.execPath,
-        [path.join(repoRoot, 'localization_engine.js'), '--interactive', '--brand-title=translated', `--install-dir=${fakeInstall}`, '--no-kill'],
+        ['--require', path.join(repoRoot, 'tests/helpers/isolated-installer.cjs'), path.join(repoRoot, 'localization_engine.js'), '--interactive', '--brand-title=translated', `--install-dir=${fakeInstall}`, '--no-kill'],
         {
             cwd: repoRoot,
             input: '',
             encoding: 'utf8',
-            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData }
+            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData, AG_TEST_HOME: root }
         }
     );
     assert.equal(resExplicit.status, 0, resExplicit.stderr || resExplicit.stdout);
