@@ -149,7 +149,8 @@ test('all Windows double-click entries work with no system Node and preserve arg
         assert.ok(line, result.stdout);
         const report = JSON.parse(line);
         assert.deepEqual(report.args, [...flags, '--install-dir', client, '--no-kill']);
-        assert.equal(report.exe.toLowerCase(), path.join(runtime, 'node.exe').toLowerCase());
+        // Node expands Windows TEMP aliases such as RUNNER~1 to their long names.
+        assert.equal(fs.realpathSync.native(report.exe).toLowerCase(), fs.realpathSync.native(path.join(runtime, 'node.exe')).toLowerCase());
         assert.equal(report.options, null);
         assert.equal(report.modulePath, null);
     }
