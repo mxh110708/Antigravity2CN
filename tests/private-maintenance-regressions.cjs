@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const crypto = require('node:crypto');
 const childProcess = require('node:child_process');
 const { readAsarLayout } = require('../src/asar_patcher');
 const ensure = require('../scripts/ensure_localized');
@@ -147,19 +148,63 @@ test('isolated install and restore preserve client files and never copy legacy p
     assert.equal(fs.readFileSync(sentinel, 'utf8'), 'keep existing client file');
 });
 
-test('ordinary-user macOS launcher forwards paths and flags without invoking the real installer', {
+test('ordinary-user macOS launcher uses verified portable Node, isolates preload env and forwards paths and flags', {
     skip: process.platform === 'win32' || (process.getuid && process.getuid() === 0),
 }, t => {
     const directory = fixture(t);
-    const bin = path.join(directory, 'Library/Application Support/fnm/aliases/default/bin');
-    fs.mkdirSync(bin, { recursive: true });
-    const fakeNode = path.join(bin, 'node');
-    fs.writeFileSync(fakeNode, '#!/bin/bash\nprintf "%s\\n" "$@"\n', { mode: 0o755 });
-    for (const [file, extra] of [['双击安装中文汉化.command', []], ['双击卸载还原官方英文.command', ['--huifu']]]) {
-        const result = childProcess.spawnSync('/bin/bash', [path.join(repo, file), '--install-dir', '/synthetic/path with spaces'], {
-            encoding: 'utf8', env: { ...process.env, HOME: directory }, timeout: 5000,
+    const projectDir = path.join(directory, 'mac project & spaces');
+    const scriptsDir = path.join(projectDir, 'scripts');
+    fs.mkdirSync(scriptsDir, { recursive: true });
+
+    for (const file of ['install-cn.command', 'restore-en.command']) {
+        fs.copyFileSync(path.join(repo, file), path.join(projectDir, file));
+        fs.chmodSync(path.join(projectDir, file), 0o755);
+    }
+    for (const file of ['run_macos.sh', 'portable_runtime.sh']) {
+        fs.copyFileSync(path.join(repo, 'scripts', file), path.join(scriptsDir, file));
+        fs.chmodSync(path.join(scriptsDir, file), 0o755);
+    }
+
+    const arch = process.arch;
+    assert.ok(['arm64', 'x64'].includes(arch));
+    const manifest = JSON.parse(fs.readFileSync(path.join(repo, 'scripts/node-runtime.json'), 'utf8'));
+    const runtimeDir = path.join(projectDir, '.runtime', `node-${manifest.version}-darwin-${arch}`);
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    const fakeNode = path.join(runtimeDir, 'node');
+    fs.copyFileSync(process.execPath, fakeNode);
+    fs.chmodSync(fakeNode, 0o755);
+    const license = Buffer.from('synthetic macos portable license');
+    fs.writeFileSync(path.join(runtimeDir, 'LICENSE'), license);
+
+    const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+    manifest.macos[arch].nodeSha256 = sha256(fs.readFileSync(fakeNode));
+    manifest.macos.licenseSha256 = sha256(license);
+    fs.writeFileSync(path.join(scriptsDir, 'node-runtime.json'), JSON.stringify(manifest));
+
+    // Stub engine only reports argv/env; it never touches any real client installation.
+    fs.writeFileSync(
+        path.join(projectDir, 'localization_engine.js'),
+        'console.log(JSON.stringify({ args: process.argv.slice(2), exe: process.execPath, options: process.env.NODE_OPTIONS || null, modulePath: process.env.NODE_PATH || null }));'
+    );
+    const poison = path.join(directory, 'must not preload.cjs');
+    fs.writeFileSync(poison, 'throw new Error("External Node preload was executed");');
+
+    for (const [file, extra] of [['install-cn.command', []], ['restore-en.command', ['--huifu']]]) {
+        const result = childProcess.spawnSync('/bin/bash', [path.join(projectDir, file), '--install-dir', '/synthetic/path with spaces'], {
+            encoding: 'utf8',
+            env: {
+                PATH: '/usr/bin:/bin',
+                HOME: directory,
+                NODE_OPTIONS: `--require "${poison}"`,
+                NODE_PATH: path.join(directory, 'untrusted-modules'),
+            },
+            timeout: 15000,
         });
         assert.equal(result.status, 0, result.stderr || result.stdout);
-        assert.deepEqual(result.stdout.trim().split('\n'), [path.join(repo, 'localization_engine.js'), ...extra, '--install-dir', '/synthetic/path with spaces']);
+        const report = JSON.parse(result.stdout.trim());
+        assert.deepEqual(report.args, [...extra, '--install-dir', '/synthetic/path with spaces']);
+        assert.equal(fs.realpathSync.native(report.exe), fs.realpathSync.native(fakeNode));
+        assert.equal(report.options, null);
+        assert.equal(report.modulePath, null);
     }
 });

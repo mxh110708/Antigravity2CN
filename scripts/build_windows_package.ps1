@@ -19,8 +19,12 @@ New-Item -ItemType Directory -Path $stage -Force | Out-Null
 foreach ($name in @('localization_engine.js', 'README.md', 'src', 'dicts')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $stage -Recurse
 }
-Get-ChildItem -LiteralPath $projectRoot -Filter '*.bat' -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $stage
+foreach ($name in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat')) {
+    $batPath = Join-Path $projectRoot $name
+    if (-not (Test-Path -LiteralPath $batPath -PathType Leaf)) {
+        throw "Missing required Windows launcher: $name"
+    }
+    Copy-Item -LiteralPath $batPath -Destination $stage
 }
 $scripts = Join-Path $stage 'scripts'
 New-Item -ItemType Directory -Path $scripts | Out-Null
@@ -39,7 +43,7 @@ if (Test-Path -LiteralPath $cached) {
     }
 }
 $null = Get-PortableNode -ProjectRoot $stage -Architecture $Architecture
-$metadata = [ordered]@{ sourceCommit = $SourceCommit; architecture = $Architecture; nodeVersion = (Get-Content -LiteralPath (Join-Path $scripts 'node-runtime.json') -Raw | ConvertFrom-Json).version }
+$metadata = [ordered]@{ platform = 'windows'; sourceCommit = $SourceCommit; architecture = $Architecture; nodeVersion = (Get-Content -LiteralPath (Join-Path $scripts 'node-runtime.json') -Raw | ConvertFrom-Json).version }
 $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'build-info.json') -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($stage, $archive, [IO.Compression.CompressionLevel]::Optimal, $true)

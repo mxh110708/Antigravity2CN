@@ -541,7 +541,7 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
     // 1. Bat file must remain pure 7-bit ASCII with CRLF
-    const batPath = path.resolve(__dirname, '..', '启动Antigravity(自动检查汉化).bat');
+    const batPath = path.resolve(__dirname, '..', 'launch-antigravity.bat');
     const batBuf = fs.readFileSync(batPath);
     assert.equal([...batBuf].some(b => b > 127), false, 'launcher bat must be pure 7-bit ASCII');
     assert.equal(/(?<!\r)\n/.test(batBuf.toString('latin1')), false, 'launcher bat must use CRLF');
@@ -631,9 +631,9 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
 test('Windows batch launchers use pure 7-bit ASCII with CRLF and no chcp to stay immune to CP936/CP950/CP65001 mojibake', () => {
     const repoRoot = path.resolve(__dirname, '..');
     const batFiles = [
-        '双击安装中文汉化.bat',
-        '双击卸载还原官方英文.bat',
-        '启动Antigravity(自动检查汉化).bat'
+        'install-cn.bat',
+        'restore-en.bat',
+        'launch-antigravity.bat'
     ];
     for (const file of batFiles) {
         const buf = fs.readFileSync(path.join(repoRoot, file));

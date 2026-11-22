@@ -8,24 +8,26 @@ set -e
 
 MODE="${1:-}"
 case "$MODE" in
-    install|restore) shift ;;
-    *) printf '%s\n' 'Usage: run_macos.sh install|restore [engine arguments]' >&2; exit 1 ;;
+    install|restore|runtime) shift ;;
+    *) printf '%s\n' 'Usage: run_macos.sh install|restore|runtime [engine arguments]' >&2; exit 1 ;;
 esac
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$SCRIPT_DIR"
 
-# Version managers are used only in this ordinary user session.
-export PATH="/opt/homebrew/bin:/usr/local/bin:/opt/local/bin:$PATH"
-for NODE_DIR in "$HOME/.volta/bin" "$HOME/.asdf/shims" "$HOME/.local/share/mise/shims" "$HOME/.local/bin" "$HOME/.fnm/current/bin" "$HOME/.local/share/fnm/aliases/default/bin" "$HOME/Library/Application Support/fnm/aliases/default/bin" "$HOME"/.nvm/versions/node/*/bin; do
-    [ ! -d "$NODE_DIR" ] || export PATH="$NODE_DIR:$PATH"
-done
-NODE_BIN="$(command -v node || true)"
-if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
-    printf '%s\n' '[错误] 未找到 Node.js，请安装受支持版本后重试。' >&2
+# Keep portable runtime verification inside the project; never inherit external preload settings.
+source "$SCRIPT_DIR/scripts/portable_runtime.sh"
+if ! NODE_BIN="$(get_portable_node "$SCRIPT_DIR")"; then
+    printf '%s\n' '[错误] 便携 Node.js 运行时准备或校验失败。' >&2
+    printf '%s\n' '离线环境请使用 Releases 中的完整 macOS 发布包；源码包首次运行需能访问 nodejs.org。' >&2
     exit 1
 fi
 
+unset NODE_OPTIONS NODE_PATH
+
+if [ "$MODE" = runtime ]; then
+    exec "$NODE_BIN" --version
+fi
 if [ "$MODE" = restore ]; then
     exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" --huifu "$@"
 fi

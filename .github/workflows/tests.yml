@@ -42,8 +42,10 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          bash -n scripts/run_macos.sh
-          for file in *.command; do bash -n "$file"; done
+          for file in scripts/run_macos.sh scripts/portable_runtime.sh scripts/build_macos_package.sh install-cn.command restore-en.command; do
+            bash -n "$file"
+            test -x "$file"
+          done
       - name: Run isolated regression tests
         run: npm test
 
@@ -65,25 +67,97 @@ jobs:
           SOURCE_COMMIT: ${{ github.sha }}
           PACKAGE_ARCH: ${{ matrix.architecture }}
         run: ./scripts/build_windows_package.ps1 -Architecture $env:PACKAGE_ARCH -SourceCommit $env:SOURCE_COMMIT
-      - name: Smoke test x64 package without system Node or network
-        if: matrix.architecture == 'x64'
+      - name: Verify Windows package separation and smoke test x64 runtime
         shell: powershell
+        env:
+          PACKAGE_ARCH: ${{ matrix.architecture }}
         run: |
-          $env:PATH = "$env:SystemRoot\System32"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $unpacked = Join-Path $env:RUNNER_TEMP 'portable-package-smoke'
-          [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $PWD 'dist/antigravity2-cn-windows-x64.zip'), $unpacked)
-          $package = Join-Path $unpacked 'antigravity2-cn-windows-x64'
-          . ./scripts/portable_runtime.ps1
-          function Save-NodeRuntimeArchive { throw 'Offline package must not download.' }
-          $node = Get-PortableNode -ProjectRoot $package -Architecture x64 -Offline
-          & $node --version
-          if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime failed.' }
-          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$package/scripts/run_windows.ps1" runtime
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged launcher failed.' }
+          $unpacked = Join-Path $env:RUNNER_TEMP "portable-windows-smoke-$env:PACKAGE_ARCH"
+          if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
+          [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $PWD "dist/antigravity2-cn-windows-$env:PACKAGE_ARCH.zip"), $unpacked)
+          $package = Join-Path $unpacked "antigravity2-cn-windows-$env:PACKAGE_ARCH"
+          foreach ($launcher in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $package $launcher) -PathType Leaf)) {
+              throw "Missing Windows launcher: $launcher"
+            }
+          }
+          $macLeaks = Get-ChildItem -LiteralPath $package -Recurse -File | Where-Object { $_.Extension -in '.command', '.sh' }
+          if ($macLeaks) {
+            throw "Unexpected macOS scripts in Windows package: $($macLeaks.FullName -join ', ')"
+          }
+          if ($env:PACKAGE_ARCH -eq 'x64') {
+            $env:PATH = "$env:SystemRoot\System32"
+            . ./scripts/portable_runtime.ps1
+            function Save-NodeRuntimeArchive { throw 'Offline package must not download.' }
+            $node = Get-PortableNode -ProjectRoot $package -Architecture x64 -Offline
+            & $node --version
+            if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime failed.' }
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$package/scripts/run_windows.ps1" runtime
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged launcher failed.' }
+          }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: antigravity2-cn-windows-${{ matrix.architecture }}
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  macos-package:
+    needs: test
+    runs-on: macos-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [arm64, x64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build portable macOS ZIP with verified Node.js and license
+        shell: bash
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_ARCH: ${{ matrix.architecture }}
+        run: ./scripts/build_macos_package.sh --architecture "$PACKAGE_ARCH" --source-commit "$SOURCE_COMMIT"
+      - name: Verify macOS package separation, permissions and offline runtime
+        shell: bash
+        env:
+          PACKAGE_ARCH: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          archive="dist/antigravity2-cn-macos-${PACKAGE_ARCH}.zip"
+          (cd dist && /usr/bin/shasum -a 256 -c "antigravity2-cn-macos-${PACKAGE_ARCH}.zip.sha256")
+          unpacked="$RUNNER_TEMP/portable-macos-smoke-${PACKAGE_ARCH}"
+          rm -rf "$unpacked"
+          mkdir -p "$unpacked"
+          /usr/bin/ditto -x -k "$archive" "$unpacked"
+          package="$unpacked/antigravity2-cn-macos-${PACKAGE_ARCH}"
+          for required in install-cn.command restore-en.command scripts/run_macos.sh scripts/portable_runtime.sh; do
+            test -x "$package/$required"
+          done
+          if find "$package" -type f \( -name '*.bat' -o -name '*.ps1' -o -name 'ensure_localized.js' \) | grep -q .; then
+            echo 'Unexpected Windows files in macOS package.' >&2
+            exit 1
+          fi
+          source "$package/scripts/portable_runtime.sh"
+          save_node_runtime_archive() {
+            echo 'Offline package must not download.' >&2
+            return 1
+          }
+          node_bin="$(get_portable_node "$package" "$PACKAGE_ARCH" --offline)"
+          test -x "$node_bin"
+          if [ "$PACKAGE_ARCH" = "arm64" ]; then
+            PATH="/usr/bin:/bin" AG_PORTABLE_OFFLINE=1 "$node_bin" --version
+            PATH="/usr/bin:/bin" AG_PORTABLE_OFFLINE=1 /bin/bash "$package/scripts/run_macos.sh" runtime
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: antigravity2-cn-macos-${{ matrix.architecture }}
           path: |
             dist/*.zip
             dist/*.zip.sha256

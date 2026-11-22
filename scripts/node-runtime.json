@@ -11,5 +11,16 @@
       "archiveSha256": "b3cc74a295b39d4f273271e96f58c06dd2b35757ca12abec64c7d0598b434f14",
       "nodeSha256": "172e320db179ce416fc012b96b9917dacfb442beb081de57c4deaed7b5a24644"
     }
+  },
+  "macos": {
+    "licenseSha256": "5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace",
+    "arm64": {
+      "archiveSha256": "ff6e17d4874b76d272212b908cc020d6e815fba5a6c7eaaa06add725840307fd",
+      "nodeSha256": "ba7073582822078d8c90bca3facacc46690bc5366fab4b815aeef9148cd6e854"
+    },
+    "x64": {
+      "archiveSha256": "977614af0504c81045e7fd85596dbca0e5f951b96681516dadafedcca8c447f7",
+      "nodeSha256": "796184b9a19ed300b1ba7cd0f7e49558fee9fc0f05080bb036025490a5a2edf3"
+    }
   }
 }

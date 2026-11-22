@@ -210,9 +210,9 @@ test('all Windows double-click entries work with no system Node and preserve arg
     const env = { ...process.env, PATH: path.join(process.env.SystemRoot, 'System32'), NODE_OPTIONS: `--require "${poison}"`, NODE_PATH: path.join(root, 'untrusted modules') };
     const client = path.join(root, 'synthetic client & spaces');
     for (const [file, flags] of [
-        ['双击安装中文汉化.bat', []],
-        ['双击卸载还原官方英文.bat', ['--huifu']],
-        ['启动Antigravity(自动检查汉化).bat', ['--fix', '--launch']],
+        ['install-cn.bat', []],
+        ['restore-en.bat', ['--huifu']],
+        ['launch-antigravity.bat', ['--fix', '--launch']],
     ]) {
         fs.copyFileSync(path.join(repo, file), path.join(root, file));
         const result = spawnSync(path.join(process.env.SystemRoot, 'System32/cmd.exe'), ['/d', '/s', '/c', `""${path.join(root, file)}" --install-dir "${client}" --no-kill"`], {

@@ -234,7 +234,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
 
     const earlyLogger = createLogger();
     if (platform !== 'win32') {
-        earlyLogger.log('[提示] 自检启动器目前仅支持 Windows；macOS 请在更新后重新运行 双击安装中文汉化.command。');
+        earlyLogger.log('[提示] 自检启动器目前仅支持 Windows；macOS 请在更新后重新运行 install-cn.command。');
         return 1;
     }
 
