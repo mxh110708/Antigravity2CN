@@ -3,6 +3,7 @@ AgentWork/
 _temp_asar/
 node_modules/
 .runtime/
+.dev-tools/
 dist/
 .DS_Store
 AGENTS.md

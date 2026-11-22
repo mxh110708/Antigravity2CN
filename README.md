@@ -12,9 +12,9 @@
 | 客户端 | Electron 架构、安装目录包含 `resources/app.asar` 或 `Contents/Resources/app.asar` 的 Antigravity |
 | 语言 | 简体中文；旧繁体入口、资源与运行分支已删除，`--tw` 会明确报错 |
 | Windows 安装 | 项目管理便携 Node.js，无需在本机安装 Node.js，也不修改系统或用户 PATH |
-| macOS / 源码开发 | Node.js `^22.22.2`、`^24.15.0` 或 `>=26.0.0`；CI 使用 Node 24 |
+| macOS / 其他开发环境 | Node.js `^22.22.2`、`^24.15.0` 或 `>=26.0.0`；CI 使用 Node 24 |
 | 普通安装 | 不需要 `npm install`；Windows 发布包已含所需运行时 |
-| 开发测试 | 使用锁定的 jsdom 开发依赖，需要先执行 `npm ci` |
+| 开发测试 | 使用锁定的 jsdom 开发依赖；Windows 可通过项目内 `scripts/dev.ps1` 准备独立 Node/npm 并安装依赖 |
 
 现有词典与回归用例包含上游 v2.34.0 相关界面。客户端每次升级都可能调整模块和注入位置，版本号相近也不等于已经验证兼容。
 
@@ -132,13 +132,26 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_windows.ps
 
 以英文原文为键、简体译文为值维护 JSON。避免全局单字替换，保留占位符、命令、路径、百分比及动态参数；涉及用户内容的规则应在明确界面范围内生效。
 
-修改后执行检查与测试，再完全退出客户端并手动重新安装：
+Windows 开发使用本项目自己的工具链，不引用其他项目目录，也不要求安装系统 Node/npm。从仓库目录执行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 setup
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 ci
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 check
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 test
+```
+
+首次运行从 Node.js 官方下载与运行时清单相同的固定版本，验证 ZIP SHA-256 后将完整 Node/npm 解压到本项目 `.dev-tools/node-<版本>-win-<架构>/`。后续复用本项目缓存；npm 缓存也放在 `.dev-tools/`。只有开发子进程的 PATH 会临时加入该目录，不改变系统或用户 PATH。工具链和缓存均不提交到 Git，也不进入普通用户发布包。
+
+macOS、CI 或已有独立开发工具链的环境使用标准命令：
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
 npm run check
 npm test
 ```
+
+修改后先完成检查与测试。需要真实客户端验收时，另行保存工作并完全退出客户端，再手动重新安装。
 
 `npm run check` 检查引擎、脚本和测试源码语法，以及词典结构、空值、规范化重复键和保留键。测试使用临时 ASAR、模拟系统接口及 jsdom，验证简体显示、表单/正文隔离、备份还原、权限拒绝和旧版迁移；安装流程测试不会操作真实客户端。
 
@@ -169,6 +182,8 @@ scripts/run_windows.ps1      Windows 共用入口，无需系统 Node.js
 scripts/portable_runtime.ps1 官方运行时下载、缓存和校验
 scripts/node-runtime.json    固定版本与 SHA-256 清单
 scripts/build_windows_package.ps1  Windows 离线包构建
+scripts/dev.ps1              Windows 项目独立的开发命令
+scripts/dev_toolchain.ps1    项目内 Node/npm 开发工具链准备
 scripts/ensure_localized.js  Windows 启动前自检
 scripts/validate_dicts.js    简体词典检查
 scripts/dev_tool.js          可选开发诊断工具

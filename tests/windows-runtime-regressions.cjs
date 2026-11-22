@@ -16,7 +16,7 @@ function fixture(t) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag portable runtime '));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     fs.mkdirSync(path.join(root, 'scripts'));
-    for (const file of ['portable_runtime.ps1', 'run_windows.ps1']) {
+    for (const file of ['portable_runtime.ps1', 'run_windows.ps1', 'dev_toolchain.ps1', 'dev.ps1']) {
         fs.copyFileSync(path.join(repo, 'scripts', file), path.join(root, 'scripts', file));
     }
     const manifest = JSON.parse(fs.readFileSync(path.join(repo, 'scripts/node-runtime.json')));
@@ -43,6 +43,79 @@ test('portable Node manifest pins official Windows archive, binary and license d
     for (const platform of Object.values(manifest.windows)) {
         assert.match(platform.archiveSha256, /^[a-f0-9]{64}$/);
         assert.match(platform.nodeSha256, /^[a-f0-9]{64}$/);
+    }
+});
+
+test('development SDK prepares Node and npm only within its own project from a verified archive', { skip: !onWindows }, t => {
+    const { root, manifest } = fixture(t);
+    const directory = `node-${manifest.version}-win-x64`;
+    const input = path.join(root, 'sdk input', directory);
+    fs.mkdirSync(path.join(input, 'node_modules/npm/bin'), { recursive: true });
+    const files = {
+        'node.exe': 'synthetic SDK node - never executed',
+        LICENSE: 'synthetic SDK license',
+        'node_modules/npm/bin/npm-cli.js': '// synthetic npm',
+    };
+    for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(input, name), content);
+    manifest.windows.x64.nodeSha256 = digest(files['node.exe']);
+    manifest.licenseSha256 = digest(files.LICENSE);
+    const archive = path.join(root, 'sdk fixture.zip');
+    const create = runPS(`$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; Add-Type -AssemblyName System.IO.Compression;
+        $zip = [IO.Compression.ZipFile]::Open(${quotePS(archive)}, [IO.Compression.ZipArchiveMode]::Create)
+        try {
+            foreach ($name in @('node.exe','LICENSE','node_modules/npm/bin/npm-cli.js')) {
+                $null = [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Join-Path ${quotePS(input)} $name), (${quotePS(directory)} + '/' + $name))
+            }
+        } finally { $zip.Dispose() }
+    `);
+    assert.equal(create.status, 0, create.stderr || create.stdout);
+    manifest.windows.x64.archiveSha256 = digest(fs.readFileSync(archive));
+    saveManifest(root, manifest);
+    const preamble = `$ErrorActionPreference='Stop'; . ${quotePS(path.join(root, 'scripts/portable_runtime.ps1'))}; . ${quotePS(path.join(root, 'scripts/dev_toolchain.ps1'))};`;
+    let result = runPS(`${preamble}
+        function Save-NodeRuntimeArchive { param($Uri, $Destination) Copy-Item -LiteralPath ${quotePS(archive)} -Destination $Destination }
+        $null = Get-ProjectDevToolchain -ProjectRoot ${quotePS(root)} -Architecture x64
+        function Save-NodeRuntimeArchive { throw 'Cached SDK must not download' }
+        $null = Get-ProjectDevToolchain -ProjectRoot ${quotePS(root)} -Architecture x64
+    `);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const sdk = path.join(root, '.dev-tools', directory);
+    for (const [name, content] of Object.entries(files)) assert.equal(fs.readFileSync(path.join(sdk, name), 'utf8'), content);
+    assert.deepEqual(fs.readdirSync(path.join(root, '.dev-tools')).sort(), [directory, 'setup.lock'].sort());
+    fs.unlinkSync(path.join(sdk, 'node_modules/npm/bin/npm-cli.js'));
+    result = runPS(`${preamble} $null = Get-ProjectDevToolchain -ProjectRoot ${quotePS(root)} -Architecture x64`);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /npm-cli.js is missing/);
+});
+
+test('development commands use project Node and npm with local cache and preserved exit status', { skip: !onWindows }, t => {
+    const { root, manifest } = fixture(t);
+    const architecture = process.arch;
+    const sdk = path.join(root, '.dev-tools', `node-${manifest.version}-win-${architecture}`);
+    fs.mkdirSync(path.join(sdk, 'node_modules/npm/bin'), { recursive: true });
+    fs.copyFileSync(process.execPath, path.join(sdk, 'node.exe'));
+    const license = 'synthetic development license';
+    fs.writeFileSync(path.join(sdk, 'LICENSE'), license);
+    manifest.windows[architecture].nodeSha256 = digest(fs.readFileSync(process.execPath));
+    manifest.licenseSha256 = digest(license);
+    saveManifest(root, manifest);
+    fs.writeFileSync(path.join(sdk, 'node_modules/npm/bin/npm-cli.js'), `console.log(JSON.stringify({args:process.argv.slice(2),exe:process.execPath,cwd:process.cwd(),pathHead:process.env.PATH.split(';')[0],cache:process.env.npm_config_cache}));if(process.argv[2]==='test')process.exitCode=23;`);
+    for (const [mode, expected, code] of [
+        ['ci', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], 0],
+        ['check', ['run', 'check'], 0],
+        ['test', ['test'], 23],
+    ]) {
+        const result = spawnSync(powershell, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'scripts/dev.ps1'), mode], {
+            env: { ...process.env, PATH: path.join(process.env.SystemRoot, 'System32') },
+            encoding: 'utf8', timeout: 15000, windowsHide: true,
+        });
+        assert.equal(result.status, code, result.stderr || result.stdout);
+        const report = JSON.parse(result.stdout.trim());
+        assert.deepEqual(report.args, expected);
+        assert.equal(fs.realpathSync.native(report.exe).toLowerCase(), fs.realpathSync.native(path.join(sdk, 'node.exe')).toLowerCase());
+        assert.equal(fs.realpathSync.native(report.cwd).toLowerCase(), fs.realpathSync.native(root).toLowerCase());
+        assert.equal(report.pathHead.toLowerCase(), sdk.toLowerCase());
+        assert.equal(report.cache.toLowerCase(), path.join(root, '.dev-tools/npm-cache').toLowerCase());
     }
 });
 

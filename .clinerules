@@ -3,6 +3,7 @@
 本仓库独立维护，仅支持简体中文；不恢复繁体资源、语言分支或代理模块注入。
 
 - 源码检查：`npm run check`；回归测试：`npm test`。使用锁文件安装测试依赖：`npm ci --ignore-scripts --no-audit --no-fund`。
+- Windows 开发优先使用 `scripts/dev.ps1` 的 setup、ci、check、test，工具链和 npm 缓存放在本项目 `.dev-tools/`；不引用其他项目的工具路径，不修改系统或用户 PATH。
 - 不对真实 Antigravity 安装目录运行开发测试。使用临时 ASAR、模拟系统接口和隔离的用户数据目录。
 - macOS 包装器在任何外部命令前拒绝 UID/EUID 为 root 的会话；引擎也必须拒绝真实/有效 root。权限不足时返回失败，不调用 sudo，不恢复用户路径到特权会话。
 - Windows 批处理保持纯 ASCII 内容及 CRLF；macOS `.command` 和 shell 脚本保持 UTF-8、LF 及可执行位。
