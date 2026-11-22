@@ -8,41 +8,27 @@
  *   node scripts/ensure_localized.js                 # 仅检查并报告状态
  *   node scripts/ensure_localized.js --fix           # 未汉化且软件未运行时自动重新注入
  *   node scripts/ensure_localized.js --fix --launch  # 自动修复后启动 Antigravity
- * 支持 --brand-title <mode>、--install-dir <dir>（不支持 --huifu）。
+ * 支持 --brand-title english、--install-dir <dir>（不支持 --huifu）。
  * 退出码：0 = 已汉化（或已修复）；2 = 未汉化且未修复；1 = 出错或修复失败。
  */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const child_process = require('child_process');
-const { readAsarLayout } = require('../src/asar_patcher');
 
 const ROOT = path.resolve(__dirname, '..');
 const SIGNATURE_START = '/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */';
 const LOCALE_MARKER = '/* ANTIGRAVITY PRIVATE LOCALE: zh-CN */';
+const BRAND_MARKER = '/* ANTIGRAVITY BRAND: Antigravity */';
 
 function createLogger() {
     return { log: (...args) => console.log(...args), error: (...args) => console.error(...args) };
 }
 
-const BRAND_TITLE_ALIASES = {
-    english: 'english',
-    en: 'english',
-    default: 'english',
-    hidden: 'hidden',
-    hide: 'hidden',
-    none: 'hidden',
-    translated: 'translated',
-    chinese: 'translated',
-    cn: 'translated',
-    zh: 'translated'
-};
-
 function parseArgs(argv) {
     let fix = false;
     let launchApp = false;
     let installDir = null;
-    let brandTitle = null;
     const passthrough = [];
 
     for (let i = 0; i < argv.length; i++) {
@@ -67,30 +53,17 @@ function parseArgs(argv) {
             if (!installDir) {
                 throw new Error('--install-dir= 路径不能为空！');
             }
-        } else if (arg === '--brand-title') {
-            if (i + 1 >= argv.length || !argv[i + 1] || argv[i + 1].startsWith('--')) {
-                throw new Error('--brand-title 缺少有效的参数值（支持 english / hidden / translated）！');
-            }
-            brandTitle = argv[++i];
-        } else if (arg.startsWith('--brand-title=')) {
-            brandTitle = arg.slice('--brand-title='.length);
-            if (!brandTitle) {
-                throw new Error('--brand-title= 参数值不能为空！');
+        } else if (arg === '--brand-title' || arg.startsWith('--brand-title=')) {
+            const value = arg === '--brand-title' ? argv[++i] : arg.slice('--brand-title='.length);
+            if (String(value || '').toLowerCase() !== 'english') {
+                throw new Error('品牌固定为 Antigravity，仅支持 --brand-title english。');
             }
         } else {
             passthrough.push(arg);
         }
     }
 
-    if (brandTitle !== null) {
-        const normalizedBrand = BRAND_TITLE_ALIASES[brandTitle.toLowerCase()];
-        if (!normalizedBrand) {
-            throw new Error(`未识别的 --brand-title 参数值 "${brandTitle}"（支持 english / hidden / translated）。`);
-        }
-        brandTitle = normalizedBrand;
-    }
-
-    return { fix, launch: launchApp, installDir, brandTitle, passthrough };
+    return { fix, launch: launchApp, installDir, brandTitle: 'english', passthrough };
 }
 
 function normalizeInstallDir(rawDir) {
@@ -225,93 +198,7 @@ function isRunning(installDir, execFileSyncFn = child_process.execFileSync) {
 
 function isLocalized(asarPath) {
     const body = fs.readFileSync(asarPath);
-    return body.includes(Buffer.from(SIGNATURE_START)) && body.includes(Buffer.from(LOCALE_MARKER));
-}
-
-function getPrefsFilePath() {
-    const baseDir = process.platform === 'win32'
-        ? (process.env.APPDATA || process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
-        : (process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'));
-    return path.join(baseDir, 'Antigravity', 'localization-prefs.json');
-}
-
-function loadLocalizationPref(installDir) {
-    try {
-        const prefsPath = getPrefsFilePath();
-        if (!fs.existsSync(prefsPath)) return null;
-        const raw = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-        const entry = raw[path.resolve(installDir).toLowerCase()];
-        return entry && typeof entry === 'object' ? entry : null;
-    } catch (e) {
-        return null;
-    }
-}
-
-function saveLocalizationPref(installDir, pref) {
-    try {
-        const prefsPath = getPrefsFilePath();
-        let data = {};
-        if (fs.existsSync(prefsPath)) {
-            const raw = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
-            if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-                data = raw;
-            }
-        }
-        data[path.resolve(installDir).toLowerCase()] = {
-            language: 'zh-CN',
-            brandTitle: String(pref.brandTitle || 'english'),
-            updatedAt: new Date().toISOString()
-        };
-        fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
-        fs.writeFileSync(prefsPath, JSON.stringify(data, null, 2), 'utf8');
-    } catch (e) {
-        console.warn(`[警告] 保存汉化偏好配置失败: ${e.message}`);
-    }
-}
-
-function detectAsarLocalizationPrefs(asarPath) {
-    try {
-        const layout = readAsarLayout(asarPath);
-        const preload = layout.files.get('dist/preload.js');
-        if (!preload || !preload.body) return null;
-        const text = preload.body.toString('utf8');
-        const idx = text.indexOf(SIGNATURE_START);
-        if (idx === -1) return null;
-        const injected = text.slice(idx);
-
-        let brandTitle = 'english';
-        const dictMatch = injected.match(/new Map\(Object\.entries\((\{[\s\S]*?\})\)\);/);
-        if (dictMatch) {
-            const dict = JSON.parse(dictMatch[1]);
-            if (Object.prototype.hasOwnProperty.call(dict, 'Antigravity')) {
-                brandTitle = dict.Antigravity === '' ? 'hidden' : 'translated';
-            }
-        }
-        return { brandTitle };
-    } catch (e) {
-        return null;
-    }
-}
-
-function resolveEffectivePrefs({ parsed, installDir, asarPath }) {
-    const saved = loadLocalizationPref(installDir);
-    const detected = detectAsarLocalizationPrefs(asarPath);
-
-    let inherited = false;
-
-    let brandTitle = 'english';
-    if (parsed.brandTitle !== null) {
-        brandTitle = parsed.brandTitle;
-    } else if (saved && saved.brandTitle) {
-        brandTitle = saved.brandTitle;
-        inherited = true;
-    } else if (detected && detected.brandTitle) {
-        brandTitle = detected.brandTitle;
-        inherited = true;
-    }
-
-    return { brandTitle, inherited };
+    return [SIGNATURE_START, LOCALE_MARKER, BRAND_MARKER].every(marker => body.includes(Buffer.from(marker)));
 }
 
 function pendingUpdate() {
@@ -365,15 +252,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
 
     const asarPath = path.join(installDir, 'resources', 'app.asar');
     let localized = isLocalized(asarPath);
-    const prefs = resolveEffectivePrefs({ parsed, installDir, asarPath, localized });
     const logger = createLogger();
-
-    if (prefs.inherited) {
-        logger.log(`[偏好] 沿用已保存的汉化配置: 简体中文, brand-title=${prefs.brandTitle}`);
-    }
-    if (localized || parsed.brandTitle !== null) {
-        saveLocalizationPref(installDir, prefs);
-    }
 
     let running;
     try {
@@ -399,7 +278,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
         } else {
             const engineArgs = [
                 '--brand-title',
-                prefs.brandTitle,
+                'english',
                 '--no-kill',
                 '--install-dir',
                 installDir
@@ -415,7 +294,6 @@ function main(argv = process.argv.slice(2), deps = {}) {
             );
             localized = res.status === 0 && isLocalized(asarPath);
             if (localized) {
-                saveLocalizationPref(installDir, prefs);
                 logger.log('[√] 汉化已恢复。');
             } else {
                 fixFailed = true;
@@ -455,11 +333,6 @@ module.exports = {
     detectInstallDir,
     isRunning,
     isLocalized,
-    getPrefsFilePath,
-    loadLocalizationPref,
-    saveLocalizationPref,
-    detectAsarLocalizationPrefs,
-    resolveEffectivePrefs,
     launch,
     main
 };

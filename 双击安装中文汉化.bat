@@ -1,7 +1,7 @@
 @echo off
 title Antigravity Localization Installer
 
-node "%~dp0localization_engine.js" --interactive %*
+node "%~dp0localization_engine.js" %*
 
 if %errorlevel% neq 0 (
     echo.

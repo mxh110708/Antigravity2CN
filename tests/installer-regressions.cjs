@@ -556,18 +556,18 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
         '--fix',
         '--launch',
         `--install-dir=${fakeRes}`,
-        '--brand-title=hidden',
+        '--brand-title=english',
         '--sc'
     ]);
     assert.equal(parsed.fix, true);
     assert.equal(parsed.launch, true);
-    assert.equal(parsed.brandTitle, 'hidden');
+    assert.equal(parsed.brandTitle, 'english');
     assert.throws(() => ensure.parseArgs(['--tw']), /仅支持简体中文/);
     assert.throws(() => ensure.parseArgs(['--tw=true']), /仅支持简体中文/);
     assert.equal(ensure.normalizeInstallDir(parsed.installDir), path.resolve(fakeInstall));
     assert.throws(() => ensure.parseArgs(['--huifu']), /不支持 --huifu/);
     assert.throws(() => ensure.parseArgs(['--install-dir=']), /不能为空/);
-    assert.throws(() => ensure.parseArgs(['--brand-title=unknown']), /未识别的 --brand-title/);
+    assert.throws(() => ensure.parseArgs(['--brand-title=unknown']), /仅支持 --brand-title english/);
 
     // 3. Registry UTF-16LE + negative/quoted icon index cleanup
     const regOut = [
@@ -603,18 +603,7 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
     // 5. Non-win32 returns non-zero exit code
     assert.equal(ensure.main(['--fix'], { platform: 'linux' }), 1);
 
-    // 6. --fix failure must abort launch and return non-zero; prefs are persisted & inherited
-    const fakeAppData = path.join(root, 'AppData');
-    const prevAppData = process.env.APPDATA;
-    const prevXdg = process.env.XDG_CONFIG_HOME;
-    process.env.APPDATA = fakeAppData;
-    process.env.XDG_CONFIG_HOME = fakeAppData;
-    t.after(() => {
-        process.env.APPDATA = prevAppData;
-        process.env.XDG_CONFIG_HOME = prevXdg;
-    });
-
-    ensure.saveLocalizationPref(fakeInstall, { useTw: true, brandTitle: 'hidden' });
+    // 6. --fix failure must abort launch without restoring old brand modes.
     let launchCalled = false;
     let capturedEngineArgs = null;
     const code = ensure.main(['--fix', '--launch', `--install-dir=${fakeInstall}`], {
@@ -632,10 +621,10 @@ test('ensure_localized validates flags, decodes UTF-16LE registry paths, guards 
     assert.equal(code, 1);
     assert.equal(launchCalled, false);
     assert.equal(capturedEngineArgs.some(arg => arg.startsWith('--tw')), false);
-    assert.equal(ensure.loadLocalizationPref(fakeInstall).language, 'zh-CN');
-    assert.equal(ensure.loadLocalizationPref(fakeInstall).useTw, undefined);
     assert.ok(capturedEngineArgs.includes('--brand-title'));
-    assert.ok(capturedEngineArgs.includes('hidden'));
+    assert.ok(capturedEngineArgs.includes('english'));
+    assert.equal(capturedEngineArgs.includes('hidden'), false);
+    assert.equal(capturedEngineArgs.includes('translated'), false);
     assert.ok(capturedEngineArgs.includes('--no-kill'));
 });
 
@@ -659,75 +648,34 @@ test('Windows batch launchers use pure 7-bit ASCII with CRLF and no chcp to stay
     }
 });
 
-test('interactive Simplified brand prompt resolves choices and skips prompting when --brand-title is explicit', async t => {
+test('default and explicit English installs never prompt and ignore legacy brand preferences', t => {
     const repoRoot = path.resolve(__dirname, '..');
-    const { PassThrough } = require('stream');
-    const engine = require(path.join(repoRoot, 'localization_engine.js'));
-    assert.equal(engine.resolveBrandTitleChoice('1'), 'english');
-    assert.equal(engine.resolveBrandTitleChoice('2'), 'hidden');
-    assert.equal(engine.resolveBrandTitleChoice('3'), 'translated');
-    assert.equal(engine.resolveBrandTitleChoice(''), 'english');
-
-    const logsSc = [];
-    const inSc = new PassThrough();
-    const outSc = new PassThrough();
-    const pSc = engine.promptBrandTitleMode({
-        input: inSc,
-        output: outSc,
-        log: (line) => logsSc.push(line)
-    });
-    inSc.end('2\n');
-    assert.equal(await pSc, 'hidden');
-    assert.ok(logsSc.some(l => l.includes('请选择左上角品牌显示方式')));
-
-    const logsEmpty = [];
-    const inEmpty = new PassThrough();
-    const outEmpty = new PassThrough();
-    const pEmpty = engine.promptBrandTitleMode({
-        input: inEmpty,
-        output: outEmpty,
-        log: (line) => logsEmpty.push(line)
-    });
-    inEmpty.end();
-    assert.equal(await pEmpty, 'english');
-    assert.ok(logsEmpty.some(l => l.includes('请选择左上角品牌显示方式')));
-
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag-interactive-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ag-english-brand-'));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const fakeInstall = path.join(root, 'Antigravity');
-    const fakeRes = path.join(fakeInstall, 'resources');
-    fs.mkdirSync(fakeRes, { recursive: true });
-    writeArchive(path.join(fakeRes, 'app.asar'), { 'dist/preload.js': { body: '// original' } });
-
-    const fakeAppData = path.join(root, 'AppData');
-    const resInteractive = childProcess.spawnSync(
-        process.execPath,
-        ['--require', path.join(repoRoot, 'tests/helpers/isolated-installer.cjs'), path.join(repoRoot, 'localization_engine.js'), '--interactive', `--install-dir=${fakeInstall}`, '--no-kill'],
-        {
-            cwd: repoRoot,
-            input: '2\n',
-            encoding: 'utf8',
-            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData, AG_TEST_HOME: root }
-        }
-    );
-    assert.equal(resInteractive.status, 0, resInteractive.stderr || resInteractive.stdout);
-    assert.ok(resInteractive.stdout.includes('请选择左上角品牌显示方式'));
-    assert.ok(resInteractive.stdout.includes('注入完成！'));
-    const prefPath = path.join(fakeAppData, 'Antigravity', 'localization-prefs.json');
-    const installKey = path.resolve(fakeInstall).toLowerCase();
-    assert.equal(JSON.parse(fs.readFileSync(prefPath, 'utf8'))[installKey].brandTitle, 'hidden');
-
-    const resExplicit = childProcess.spawnSync(
-        process.execPath,
-        ['--require', path.join(repoRoot, 'tests/helpers/isolated-installer.cjs'), path.join(repoRoot, 'localization_engine.js'), '--interactive', '--brand-title=translated', `--install-dir=${fakeInstall}`, '--no-kill'],
-        {
-            cwd: repoRoot,
-            input: '',
-            encoding: 'utf8',
-            env: { ...process.env, APPDATA: fakeAppData, XDG_CONFIG_HOME: fakeAppData, AG_TEST_HOME: root }
-        }
-    );
-    assert.equal(resExplicit.status, 0, resExplicit.stderr || resExplicit.stdout);
-    assert.equal(resExplicit.stdout.includes('请选择左上角品牌显示方式'), false);
-    assert.equal(JSON.parse(fs.readFileSync(prefPath, 'utf8'))[installKey].brandTitle, 'translated');
+    const resources = path.join(fakeInstall, 'resources');
+    fs.mkdirSync(resources, { recursive: true });
+    const archive = path.join(resources, 'app.asar');
+    writeArchive(archive, { 'dist/preload.js': { body: '// original preload' } });
+    const appData = path.join(root, 'AppData');
+    const prefsPath = path.join(appData, 'Antigravity', 'localization-prefs.json');
+    fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
+    const originalPrefs = JSON.stringify({ [path.resolve(fakeInstall).toLowerCase()]: { brandTitle: 'hidden' } });
+    fs.writeFileSync(prefsPath, originalPrefs);
+    let canonical;
+    for (const extra of [[], ['--brand-title', 'english']]) {
+        const result = childProcess.spawnSync(process.execPath, [
+            '--require', path.join(repoRoot, 'tests/helpers/isolated-installer.cjs'),
+            path.join(repoRoot, 'localization_engine.js'), '--install-dir', fakeInstall, '--no-kill', ...extra,
+        ], {
+            cwd: repoRoot, input: '', encoding: 'utf8', timeout: 15000,
+            env: { ...process.env, APPDATA: appData, XDG_CONFIG_HOME: appData, AG_TEST_HOME: root },
+        });
+        assert.equal(result.status, 0, result.stderr || result.stdout);
+        assert.doesNotMatch(result.stdout, /请选择|隐藏品牌|品牌显示方式/);
+        const preload = readAsarLayout(archive).files.get('dist/preload.js').body;
+        assert.ok(preload.includes(Buffer.from('/* ANTIGRAVITY BRAND: Antigravity */')));
+        if (canonical) assert.deepEqual(preload, canonical); else canonical = preload;
+        assert.equal(fs.readFileSync(prefsPath, 'utf8'), originalPrefs);
+    }
 });

@@ -50,9 +50,8 @@ function loadEngine({ argv = [] } = {}) {
     return context;
 }
 
-function loadRuntime({ brandTitle = 'english' } = {}) {
-    const argv = ['--brand-title', brandTitle];
-    return loadEngine({ argv }).generateJs();
+function loadRuntime() {
+    return loadEngine().generateJs();
 }
 
 function createDom(html, options = {}) {

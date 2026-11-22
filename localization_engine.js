@@ -28,41 +28,6 @@ const {
 } = require('./src/main_patches');
 
 const DICTS_FOLDER = 'dicts';
-const BRAND_TITLE_ALIASES = {
-    english: 'english',
-    en: 'english',
-    default: 'english',
-    hidden: 'hidden',
-    hide: 'hidden',
-    none: 'hidden',
-    translated: 'translated',
-    chinese: 'translated',
-    cn: 'translated',
-    zh: 'translated'
-};
-
-function getOptionValue(name, defaultValue) {
-    const args = process.argv.slice(2);
-    let result = defaultValue;
-    for (let i = 0; i < args.length; i++) {
-        if (args[i] === name) {
-            if (i + 1 < args.length && args[i + 1] && !args[i + 1].startsWith('--')) {
-                result = args[i + 1];
-                i++;
-            }
-        } else if (args[i].startsWith(name + '=')) {
-            result = args[i].slice(name.length + 1);
-        }
-    }
-    return result;
-}
-
-const rawBrandTitle = String(getOptionValue('--brand-title', 'english')).toLowerCase();
-let BRAND_TITLE_MODE = BRAND_TITLE_ALIASES[rawBrandTitle] || 'english';
-if (!BRAND_TITLE_ALIASES[rawBrandTitle]) {
-    console.warn(`[警告] 未识别的 --brand-title 参数 "${rawBrandTitle}"，已回退为 english。`);
-}
-
 const SIGNATURE_START = "/* --- ANTIGRAVITY CHINESE LOCALIZATION START --- */";
 const SIGNATURE_END = "/* --- ANTIGRAVITY CHINESE LOCALIZATION END --- */";
 
@@ -100,11 +65,8 @@ function loadDictionary() {
     if (Object.keys(totalMap).length === 0) {
         throw new Error(`词典目录未加载到有效词条: ${dictsDir}`);
     }
-    if (BRAND_TITLE_MODE === 'english') {
-        delete totalMap[normalizeText('Antigravity')];
-    } else if (BRAND_TITLE_MODE === 'hidden') {
-        totalMap[normalizeText('Antigravity')] = '';
-    }
+    // The product brand is always displayed in its original English form.
+    delete totalMap[normalizeText('Antigravity')];
     return totalMap;
 }
 
@@ -117,7 +79,7 @@ function generateJs() {
     const body = runtimeTemplate
         .replace('DICT_PLACEHOLDER', () => dictJson);
 
-    return `${SIGNATURE_START}\n/* ANTIGRAVITY PRIVATE LOCALE: zh-CN */\n${body}\n${SIGNATURE_END}`;
+    return `${SIGNATURE_START}\n/* ANTIGRAVITY PRIVATE LOCALE: zh-CN */\n/* ANTIGRAVITY BRAND: Antigravity */\n${body}\n${SIGNATURE_END}`;
 }
 
 let wasAppRunning = false;
@@ -602,36 +564,6 @@ function restore20(resourcesDir, noKill = false) {
     return true;
 }
 
-function getPrefsFilePath() {
-    const baseDir = process.platform === 'win32'
-        ? (process.env.APPDATA || process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
-        : (process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'));
-    return path.join(baseDir, 'Antigravity', 'localization-prefs.json');
-}
-
-function saveLocalizationPref(installDir, pref) {
-    try {
-        const prefsPath = getPrefsFilePath();
-        let data = {};
-        if (fs.existsSync(prefsPath)) {
-            const raw = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
-            if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-                data = raw;
-            }
-        }
-        const key = path.resolve(installDir).toLowerCase();
-        data[key] = {
-            language: 'zh-CN',
-            brandTitle: String(pref.brandTitle || 'english'),
-            updatedAt: new Date().toISOString()
-        };
-        fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
-        fs.writeFileSync(prefsPath, JSON.stringify(data, null, 2), 'utf8');
-    } catch (e) {
-        console.warn(`[警告] 保存汉化偏好配置失败: ${e.message}`);
-    }
-}
-
 function canRestartApp(installDir) {
     if (process.platform === 'win32') {
         return fs.existsSync(path.join(installDir, 'Antigravity.exe'));
@@ -642,69 +574,21 @@ function canRestartApp(installDir) {
     return false;
 }
 
-function resolveBrandTitleChoice(choice) {
-    const trimmed = String(choice || '').trim();
-    if (trimmed === '2') return 'hidden';
-    if (trimmed === '3') return 'translated';
-    return 'english';
-}
-
-function promptBrandTitleMode({ input = process.stdin, output = process.stdout, log = console.log } = {}) {
-    const promptLines = [
-            '',
-            '请选择左上角品牌显示方式：',
-            '[1] 保持英文 Antigravity（推荐）',
-            '[2] 隐藏品牌名',
-            '[3] 汉化为品牌名（反重力）'
-        ];
-    const questionText = '请选择 [1/2/3] (直接按 Enter 默认为 1): ';
-
-    for (const line of promptLines) {
-        log(line);
-    }
-
-    return new Promise((resolve) => {
-        const readline = require('readline');
-        const rl = readline.createInterface({ input, output });
-        let settled = false;
-        let aborted = false;
-        const finish = (answer) => {
-            if (settled) return;
-            settled = true;
-            rl.close();
-            resolve(resolveBrandTitleChoice(answer));
-        };
-        rl.on('SIGINT', () => {
-            aborted = true;
-            settled = true;
-            rl.close();
-            process.exit(130);
-        });
-        rl.on('close', () => {
-            if (!aborted) finish('1');
-        });
-        rl.question(questionText, finish);
-    });
-}
-
 // ==========================================
 // 入口
 // ==========================================
-async function main() {
+function main() {
     if (typeof require === 'function' && typeof module !== 'undefined' && require.main !== module) {
         return;
     }
     let huifu = false;
     let manualDir = "";
     let noKill = false;
-    let interactive = false;
 
     const args = process.argv.slice(2);
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--huifu') {
             huifu = true;
-        } else if (args[i] === '--interactive') {
-            interactive = true;
         } else if (args[i] === '--install-dir') {
             if (i + 1 >= args.length || !args[i + 1] || args[i + 1].startsWith('--')) {
                 console.error('[错误] --install-dir 缺少有效的路径参数！');
@@ -720,26 +604,15 @@ async function main() {
             }
         } else if (args[i] === '--no-kill') {
             noKill = true;
-        } else if (args[i] === '--brand-title') {
-            if (i + 1 >= args.length || !args[i + 1] || args[i + 1].startsWith('--')) {
-                console.error('[错误] --brand-title 缺少有效的参数值（支持 english / hidden / translated）！');
-                process.exit(1);
-            }
-            i++;
-        } else if (args[i].startsWith('--brand-title=')) {
-            if (!args[i].slice('--brand-title='.length)) {
-                console.error('[错误] --brand-title= 参数值不能为空！');
+        } else if (args[i] === '--brand-title' || args[i].startsWith('--brand-title=')) {
+            const value = args[i] === '--brand-title'
+                ? args[++i]
+                : args[i].slice('--brand-title='.length);
+            if (String(value || '').toLowerCase() !== 'english') {
+                console.error('[错误] 品牌固定为 Antigravity，仅支持 --brand-title english。');
                 process.exit(1);
             }
         }
-    }
-
-    const hasExplicitBrandTitle = args.some(a => a === '--brand-title' || a.startsWith('--brand-title='));
-    if (interactive && !huifu && !hasExplicitBrandTitle) {
-        BRAND_TITLE_MODE = await promptBrandTitleMode();
-    }
-    if (interactive && !huifu) {
-        console.log('\n[1/2] 正在注入汉化...');
     }
 
     // 1. 探测路径
@@ -790,9 +663,6 @@ async function main() {
     } else {
         console.log("====== 正在安装 Antigravity 中文汉化 ======");
         success = install20(resourcesDir, noKill);
-        if (success) {
-            saveLocalizationPref(installDir, { brandTitle: BRAND_TITLE_MODE });
-        }
     }
 
     // 5. 校验通过且原来客户端在运行，则自动重新启动客户端（仅当目标为有效客户端包/可执行程序时触发，避免自定义目录误弹 Finder）
@@ -821,15 +691,7 @@ async function main() {
         }
     }
 
-    if (!success) {
-        if (interactive && !huifu) {
-            console.log('\n[×] 注入失败，请检查上方错误信息。');
-        }
-        process.exit(1);
-    }
-    if (interactive && !huifu) {
-        console.log('\n[2/2] 注入完成！\n\n提示：汉化已成功安装。\n\n窗口将在 5 秒后自动关闭...');
-    }
+    if (!success) process.exit(1);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -839,9 +701,7 @@ if (typeof module !== 'undefined' && module.exports) {
         resignAppOnMac,
         resolveMacAppBundle,
         isValidMacAppBundle,
-        canRestartApp,
-        resolveBrandTitleChoice,
-        promptBrandTitleMode
+        canRestartApp
     };
 }
 

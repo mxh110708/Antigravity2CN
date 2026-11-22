@@ -1,6 +1,6 @@
 @echo off
 rem Antigravity launcher: re-inject Chinese localization if an official auto-update wiped it, then start the app.
-rem Simplified Chinese only. Optional brand title: --brand-title hidden / translated.
+rem Simplified Chinese UI with the original English Antigravity brand.
 node "%~dp0scripts\ensure_localized.js" --fix --launch %*
 if %errorlevel% neq 0 (
     echo.

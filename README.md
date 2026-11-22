@@ -33,7 +33,7 @@ node --version
 
 ### Windows
 
-在仓库目录双击 `双击安装中文汉化.bat`，按提示选择品牌显示方式，安装成功后重新启动客户端。
+在仓库目录双击 `双击安装中文汉化.bat`，默认保留 Antigravity 英文品牌，安装成功后重新启动客户端。
 
 也可在终端指定安装目录：
 
@@ -67,13 +67,10 @@ node localization_engine.js --install-dir "C:\Path\To\Antigravity" --brand-title
 | --- | --- |
 | `--install-dir <path>` | 指定客户端目录、资源目录或 `app.asar` 路径 |
 | `--brand-title english` | 保留 Antigravity 英文品牌，默认值 |
-| `--brand-title hidden` | 隐藏左上角品牌名 |
-| `--brand-title translated` | 使用简体中文品牌名 |
-| `--interactive` | 交互选择品牌显示方式 |
 | `--no-kill` | 不关闭客户端进程；建议先自行退出客户端 |
 | `--huifu` | 使用原始备份还原英文版 |
 
-所有语言选择固定为简体中文。旧 `--sc` 仅作为兼容参数接受，不再提供语言切换；`--tw` 及其赋值形式均被拒绝。旧偏好中的繁体字段不会恢复繁体模式，品牌偏好可继续沿用。
+所有语言选择固定为简体中文。旧 `--sc` 仅作为兼容参数接受，不再提供语言切换；`--tw` 及其赋值形式均被拒绝。品牌固定保留英文 Antigravity，不再提供品牌选择菜单，也不读取旧的隐藏或中文品牌偏好。
 
 ## 还原与升级
 
@@ -98,7 +95,7 @@ node localization_engine.js --huifu --install-dir "/path/to/Antigravity" --no-ki
 node scripts/ensure_localized.js --fix --launch
 ```
 
-启动器在客户端未运行时修复汉化，并沿用已保存的品牌偏好。只有原上游汉化标记、缺少本版简体标记的包也会被重新处理；修复失败时不会继续启动客户端。可以传入 `--install-dir` 与 `--brand-title`。
+启动器在客户端未运行时修复汉化，统一保留 Antigravity 英文品牌。旧汉化包缺少本版简体或固定英文品牌标记时会被重新处理；修复失败时不会继续启动客户端。可以传入 `--install-dir`，也可显式指定唯一支持的 `--brand-title english`。
 
 只检查状态、不安装或启动：
 

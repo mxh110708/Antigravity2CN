@@ -29,4 +29,4 @@ fi
 if [ "$MODE" = restore ]; then
     exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" --huifu "$@"
 fi
-exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" --interactive "$@"
+exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" "$@"

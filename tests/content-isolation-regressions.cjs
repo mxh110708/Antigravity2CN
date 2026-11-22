@@ -13,6 +13,12 @@ async function fixture(t, html, beforeInject) {
     return dom.window;
 }
 
+test('English Antigravity brand is preserved while surrounding UI remains Simplified Chinese', async t => {
+    const w = await fixture(t, '<h1 id="brand">Antigravity</h1><button id="settings">Settings</button>');
+    assert.equal(w.document.querySelector('#brand').textContent, 'Antigravity');
+    assert.equal(w.document.querySelector('#settings').textContent, '设置');
+});
+
 test('File Viewer isolation survives translating its accessible name', async t => {
     const w = await fixture(t, '<div aria-label="File Viewer"><span id="file">Settings</span></div><button id="ui">Settings</button>');
     assert.equal(w.document.querySelector('#file').textContent, 'Settings');
