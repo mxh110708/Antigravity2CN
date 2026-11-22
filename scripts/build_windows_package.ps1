@@ -8,7 +8,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'portable_runtime.ps1')
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $projectRoot 'dist' }
 $output = [IO.Path]::GetFullPath($OutputDirectory)
-$packageName = "antigravity2-cn-windows-$Architecture"
+$packageName = "antigravity2cn-windows-$Architecture"
 $stage = Join-Path $output $packageName
 $archive = Join-Path $output "$packageName.zip"
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $archive)) {

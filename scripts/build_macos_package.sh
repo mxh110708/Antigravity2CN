@@ -57,7 +57,7 @@ fi
 mkdir -p "$OUTPUT_DIR"
 OUT="$(cd -- "$OUTPUT_DIR" && pwd -P)"
 
-PACKAGE_NAME="antigravity2-cn-macos-${ARCH}"
+PACKAGE_NAME="antigravity2cn-macos-${ARCH}"
 STAGE="$OUT/$PACKAGE_NAME"
 ARCHIVE="$OUT/${PACKAGE_NAME}.zip"
 

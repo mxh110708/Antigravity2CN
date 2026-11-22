@@ -213,19 +213,19 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
     ], { encoding: 'utf8', timeout: 30000 });
     assert.equal(buildRes.status, 0, buildRes.stderr || buildRes.stdout);
 
-    const zipPath = path.join(outDir, 'antigravity2-cn-macos-arm64.zip');
+    const zipPath = path.join(outDir, 'antigravity2cn-macos-arm64.zip');
     const shaPath = `${zipPath}.sha256`;
     assert.equal(fs.existsSync(zipPath), true);
     assert.equal(fs.existsSync(shaPath), true);
     const recordedSha = fs.readFileSync(shaPath, 'utf8').trim();
-    assert.equal(recordedSha, `${digest(fs.readFileSync(zipPath))}  antigravity2-cn-macos-arm64.zip`);
+    assert.equal(recordedSha, `${digest(fs.readFileSync(zipPath))}  antigravity2cn-macos-arm64.zip`);
 
     const unpacked = path.join(root, 'unpacked');
     fs.mkdirSync(unpacked, { recursive: true });
     const unzipRes = spawnSync('unzip', ['-q', zipPath, '-d', unpacked], { encoding: 'utf8' });
     assert.equal(unzipRes.status, 0, unzipRes.stderr || unzipRes.stdout);
 
-    const pkgDir = path.join(unpacked, 'antigravity2-cn-macos-arm64');
+    const pkgDir = path.join(unpacked, 'antigravity2cn-macos-arm64');
     const files = listFilesRecursive(pkgDir);
     for (const required of [
         'localization_engine.js',

@@ -75,8 +75,8 @@ jobs:
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $unpacked = Join-Path $env:RUNNER_TEMP "portable-windows-smoke-$env:PACKAGE_ARCH"
           if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
-          [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $PWD "dist/antigravity2-cn-windows-$env:PACKAGE_ARCH.zip"), $unpacked)
-          $package = Join-Path $unpacked "antigravity2-cn-windows-$env:PACKAGE_ARCH"
+          [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $PWD "dist/antigravity2cn-windows-$env:PACKAGE_ARCH.zip"), $unpacked)
+          $package = Join-Path $unpacked "antigravity2cn-windows-$env:PACKAGE_ARCH"
           foreach ($launcher in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat')) {
             if (-not (Test-Path -LiteralPath (Join-Path $package $launcher) -PathType Leaf)) {
               throw "Missing Windows launcher: $launcher"
@@ -98,7 +98,7 @@ jobs:
           }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: antigravity2-cn-windows-${{ matrix.architecture }}
+          name: antigravity2cn-windows-${{ matrix.architecture }}
           path: |
             dist/*.zip
             dist/*.zip.sha256
@@ -130,13 +130,13 @@ jobs:
           PACKAGE_ARCH: ${{ matrix.architecture }}
         run: |
           set -euo pipefail
-          archive="dist/antigravity2-cn-macos-${PACKAGE_ARCH}.zip"
-          (cd dist && /usr/bin/shasum -a 256 -c "antigravity2-cn-macos-${PACKAGE_ARCH}.zip.sha256")
+          archive="dist/antigravity2cn-macos-${PACKAGE_ARCH}.zip"
+          (cd dist && /usr/bin/shasum -a 256 -c "antigravity2cn-macos-${PACKAGE_ARCH}.zip.sha256")
           unpacked="$RUNNER_TEMP/portable-macos-smoke-${PACKAGE_ARCH}"
           rm -rf "$unpacked"
           mkdir -p "$unpacked"
           /usr/bin/ditto -x -k "$archive" "$unpacked"
-          package="$unpacked/antigravity2-cn-macos-${PACKAGE_ARCH}"
+          package="$unpacked/antigravity2cn-macos-${PACKAGE_ARCH}"
           for required in install-cn.command restore-en.command scripts/run_macos.sh scripts/portable_runtime.sh; do
             test -x "$package/$required"
           done
@@ -157,7 +157,7 @@ jobs:
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: antigravity2-cn-macos-${{ matrix.architecture }}
+          name: antigravity2cn-macos-${{ matrix.architecture }}
           path: |
             dist/*.zip
             dist/*.zip.sha256

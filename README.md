@@ -31,14 +31,14 @@ Windows 与 macOS **分开打包、独立发行**，各自只包含本平台所�
 
 ### 方式 A：下载对应平台的离线便携包（推荐）
 
-前往 [Releases](https://github.com/mxh110708/antigravity2-cn/releases/latest)，按您的设备系统与 CPU 架构下载对应压缩包（建议核对随附的 `.sha256` 文件）：
+前往 [Releases](https://github.com/mxh110708/Antigravity2CN/releases/latest)，按您的设备系统与 CPU 架构下载对应压缩包（建议核对随附的 `.sha256` 文件）：
 
 | 平台与设备 | 发行包文件名 | 校验文件 | 适用说明 |
 | --- | --- | --- | --- |
-| Windows（Intel / AMD 电脑） | `antigravity2-cn-windows-x64.zip` | `antigravity2-cn-windows-x64.zip.sha256` | 最常见的 64 位 Windows 电脑 |
-| Windows（ARM 设备） | `antigravity2-cn-windows-arm64.zip` | `antigravity2-cn-windows-arm64.zip.sha256` | Snapdragon / ARM64 Windows 设备 |
-| macOS（Apple Silicon M 系列） | `antigravity2-cn-macos-arm64.zip` | `antigravity2-cn-macos-arm64.zip.sha256` | M1 / M2 / M3 / M4 及更新机型 |
-| macOS（Intel 芯片） | `antigravity2-cn-macos-x64.zip` | `antigravity2-cn-macos-x64.zip.sha256` | Intel 处理器 Mac 电脑 |
+| Windows（Intel / AMD 电脑） | `antigravity2cn-windows-x64.zip` | `antigravity2cn-windows-x64.zip.sha256` | 最常见的 64 位 Windows 电脑 |
+| Windows（ARM 设备） | `antigravity2cn-windows-arm64.zip` | `antigravity2cn-windows-arm64.zip.sha256` | Snapdragon / ARM64 Windows 设备 |
+| macOS（Apple Silicon M 系列） | `antigravity2cn-macos-arm64.zip` | `antigravity2cn-macos-arm64.zip.sha256` | M1 / M2 / M3 / M4 及更新机型 |
+| macOS（Intel 芯片） | `antigravity2cn-macos-x64.zip` | `antigravity2cn-macos-x64.zip.sha256` | Intel 处理器 Mac 电脑 |
 
 离线包完整解压到**当前用户可写的目录**后即可离线运行（不要直接在压缩包预览窗口内双击运行）。
 
@@ -47,8 +47,8 @@ Windows 与 macOS **分开打包、独立发行**，各自只包含本平台所�
 需要同步源码或自行修改词典时，可使用源码仓库：
 
 ```sh
-git clone https://github.com/mxh110708/antigravity2-cn.git
-cd antigravity2-cn
+git clone https://github.com/mxh110708/Antigravity2CN.git
+cd Antigravity2CN
 ```
 
 直接运行源码目录中的 Windows `.bat` 或 macOS `.command` 入口时，脚本会检查项目内的 `.runtime/`：
@@ -65,7 +65,7 @@ cd antigravity2-cn
 > 操作前请先保存工作并**完全退出** Antigravity 客户端（含系统托盘图标）。默认情况下引擎会自动尝试关闭仍在运行的客户端；传入 `--no-kill` 可禁止自动关闭进程。
 
 1. **安装简体中文汉化**：
-   完整解压 `antigravity2-cn-windows-<架构>.zip` 后，双击运行 **`install-cn.bat`**。
+   完整解压 `antigravity2cn-windows-<架构>.zip` 后，双击运行 **`install-cn.bat`**。
    若客户端安装在非常规路径，也可在终端（PowerShell / CMD）中手动指定目录：
    ```powershell
    .\install-cn.bat --install-dir "C:\Path\To\Antigravity" --brand-title english --no-kill
@@ -100,7 +100,7 @@ cd antigravity2-cn
    推荐将官方 `Antigravity.app` 放在当前用户的 **`~/Applications/Antigravity.app`**（不要同时运行多个应用副本）。自动探测优先检查 `~/Applications/Antigravity.app`，再检查 `/Applications/Antigravity.app`；若系统 `/Applications` 下的副本不可写，请复制到 `~/Applications/` 后再操作，不要通过 `sudo` 绕过。
 
 2. **安装简体中文汉化**：
-   保存工作并**完全退出** Antigravity 后，在解压的 `antigravity2-cn-macos-<架构>/` 目录中双击 **`install-cn.command`**，或在终端运行：
+   保存工作并**完全退出** Antigravity 后，在解压的 `antigravity2cn-macos-<架构>/` 目录中双击 **`install-cn.command`**，或在终端运行：
    ```sh
    /bin/bash ./install-cn.command --install-dir "$HOME/Applications/Antigravity.app"
    ```
@@ -260,7 +260,7 @@ docs/security/                                             固定版本的历史
 ## 常见问题解答 (FAQ)
 
 - **1. Windows 运行提示 `node` 不是内部或外部命令，或找不到运行时？**
-  您使用的可能是旧版入口。请重新获取本版完整代码或从 Releases 下载 `antigravity2-cn-windows-<架构>.zip` 后运行 `install-cn.bat`，无需在本机单独安装 Node.js。
+  您使用的可能是旧版入口。请重新获取本版完整代码或从 Releases 下载 `antigravity2cn-windows-<架构>.zip` 后运行 `install-cn.bat`，无需在本机单独安装 Node.js。
 
 - **2. 首次运行源码版时无法下载运行时 / 无法连接 `nodejs.org`？**
   源码包首次运行缺少 `.runtime/` 时需要从 `nodejs.org` 下载固定版本；本项目不会自动切换代理或使用第三方镜像。受限网络环境请直接下载 Releases 中对应平台与架构的完整离线包，解压后即可离线使用。
