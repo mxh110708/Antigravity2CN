@@ -2,7 +2,7 @@
 
 个人独立维护、私人使用的 Antigravity 中文界面汉化工具。仅支持简体中文，保留 Windows 和 macOS 的安装、还原与界面内容隔离功能。
 
-本仓库为独立私有仓库，上游历史保留，但后续更新由本仓库自行审阅和维护。它不是官方语言包。网络代理注入功能已移除，不复制 DLL 或代理配置，也不接管系统代理。
+本仓库为独立仓库，上游历史保留，但后续更新由本仓库自行审阅和维护。
 
 ## 环境与范围
 
@@ -177,6 +177,5 @@ docs/security/              固定版本的历史审查与修复记录
 
 ## 项目上游与来源
 
-- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上进行私人维护。
-- 词典来源致谢：[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)。上游 README 对部分词典成果标注了 MIT 来源；这不代表整库已有 MIT 授权。
-- 导入时未见整个项目的独立 LICENSE 文件，本仓库不补写或推定整库开源许可。当前仅用于私人维护和使用；如有后续分发需求，先核实相应代码、词典和其他素材的许可及归属。
+- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上进行独立维护。
+- 词典来源致谢：[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)。上游 README 对部分词典成果标注了 MIT 来源。
