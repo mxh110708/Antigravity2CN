@@ -34,6 +34,10 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check source and dictionaries
         run: npm run check
+      - name: Check Windows PowerShell 5.1 syntax
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./scripts/check_powershell.ps1
       - name: Check macOS shell syntax
         if: runner.os != 'Windows'
         shell: bash
@@ -42,3 +46,47 @@ jobs:
           for file in *.command; do bash -n "$file"; done
       - name: Run isolated regression tests
         run: npm test
+
+  windows-package:
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x64, arm64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build portable Windows ZIP with verified Node.js and license
+        shell: powershell
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_ARCH: ${{ matrix.architecture }}
+        run: ./scripts/build_windows_package.ps1 -Architecture $env:PACKAGE_ARCH -SourceCommit $env:SOURCE_COMMIT
+      - name: Smoke test x64 package without system Node or network
+        if: matrix.architecture == 'x64'
+        shell: powershell
+        run: |
+          $env:PATH = "$env:SystemRoot\System32"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $unpacked = Join-Path $env:RUNNER_TEMP 'portable-package-smoke'
+          [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $PWD 'dist/antigravity2-cn-windows-x64.zip'), $unpacked)
+          $package = Join-Path $unpacked 'antigravity2-cn-windows-x64'
+          . ./scripts/portable_runtime.ps1
+          function Save-NodeRuntimeArchive { throw 'Offline package must not download.' }
+          $node = Get-PortableNode -ProjectRoot $package -Architecture x64 -Offline
+          & $node --version
+          if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime failed.' }
+          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$package/scripts/run_windows.ps1" runtime
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged launcher failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: antigravity2-cn-windows-${{ matrix.architecture }}
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

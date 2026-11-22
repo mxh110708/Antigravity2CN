@@ -2,6 +2,8 @@ scratch/
 AgentWork/
 _temp_asar/
 node_modules/
+.runtime/
+dist/
 .DS_Store
 AGENTS.md
 

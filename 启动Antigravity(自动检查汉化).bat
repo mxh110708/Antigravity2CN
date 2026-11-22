@@ -1,11 +1,16 @@
 @echo off
-rem Antigravity launcher: re-inject Chinese localization if an official auto-update wiped it, then start the app.
-rem Simplified Chinese UI with the original English Antigravity brand.
-node "%~dp0scripts\ensure_localized.js" --fix --launch %*
-if %errorlevel% neq 0 (
+setlocal
+title Antigravity Localization Launcher
+
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\run_windows.ps1" launch %*
+set "LAUNCH_EXIT=%ERRORLEVEL%"
+
+if not "%LAUNCH_EXIT%"=="0" (
     echo.
-    echo [!] Localization check did not finish cleanly. See messages above.
+    echo [ERROR] Localization check failed. Please check the messages above.
     pause
-    exit /b %errorlevel%
+    exit /b %LAUNCH_EXIT%
 )
-timeout /t 3 >nul 2>&1 || exit /b 0
+
+timeout /t 5 >nul 2>&1
+exit /b 0

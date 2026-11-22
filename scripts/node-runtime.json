@@ -1,0 +1,15 @@
+{
+  "version": "v24.22.3",
+  "source": "https://nodejs.org/dist/v24.22.3/SHASUMS256.txt",
+  "licenseSha256": "ed34dd8e3f0a78dbaf00d0444ce8e285b015b765379c2e17880455f70370f8e9",
+  "windows": {
+    "x64": {
+      "archiveSha256": "e612af99f626ab415ea225af6bce5c971feb448cb5cae250bb1c3fa50c5f7d9f",
+      "nodeSha256": "86fc4785327db5f5c7558dc6156c543b433c313e813a222e088086222ab4afa6"
+    },
+    "arm64": {
+      "archiveSha256": "b3cc74a295b39d4f273271e96f58c06dd2b35757ca12abec64c7d0598b434f14",
+      "nodeSha256": "172e320db179ce416fc012b96b9917dacfb442beb081de57c4deaed7b5a24644"
+    }
+  }
+}
