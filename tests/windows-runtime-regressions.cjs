@@ -114,8 +114,9 @@ test('development commands use project Node and npm with local cache and preserv
         assert.deepEqual(report.args, expected);
         assert.equal(fs.realpathSync.native(report.exe).toLowerCase(), fs.realpathSync.native(path.join(sdk, 'node.exe')).toLowerCase());
         assert.equal(fs.realpathSync.native(report.cwd).toLowerCase(), fs.realpathSync.native(root).toLowerCase());
-        assert.equal(report.pathHead.toLowerCase(), sdk.toLowerCase());
-        assert.equal(report.cache.toLowerCase(), path.join(root, '.dev-tools/npm-cache').toLowerCase());
+        assert.equal(fs.realpathSync.native(report.pathHead).toLowerCase(), fs.realpathSync.native(sdk).toLowerCase());
+        assert.equal(fs.realpathSync.native(path.dirname(report.cache)).toLowerCase(), fs.realpathSync.native(path.join(root, '.dev-tools')).toLowerCase());
+        assert.equal(path.basename(report.cache), 'npm-cache');
     }
 });
 
