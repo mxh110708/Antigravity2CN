@@ -114,7 +114,7 @@ chmod 0755 \
     "$STAGE/scripts/portable_runtime.sh" \
     "$STAGE_NODE"
 
-PKG_VERSION="$("$_PR_AWK_BIN" -F'"' '/"version"[ \t]*:/ { print $4; exit }' "$PROJECT_ROOT/package.json")"
+PKG_VERSION="$("$_PR_AWK_BIN" '{ text = (NR == 1 ? $0 : text "\n" $0) } END { if (match(text, /"version"[ \t\r\n]*:[ \t\r\n]*"[0-9]+\.[0-9]+\.[0-9]+"/)) { s = substr(text, RSTART, RLENGTH); sub(/^.*"version"[ \t\r\n]*:[ \t\r\n]*"/, "", s); sub(/"$/, "", s); print s } }' "$PROJECT_ROOT/package.json")"
 if ! printf '%s' "$PKG_VERSION" | "$_PR_AWK_BIN" 'BEGIN { ok = 0 } /^[0-9]+\.[0-9]+\.[0-9]+$/ { ok = 1 } END { exit (ok ? 0 : 1) }'; then
     printf '%s\n' "Missing or invalid version in package.json: $PKG_VERSION" >&2
     exit 1
