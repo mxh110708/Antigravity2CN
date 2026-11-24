@@ -18,7 +18,7 @@
 | 开发测试环境 | 使用锁定的 `jsdom` 开发依赖；Windows 可用 `scripts/dev.ps1` 准备项目内开发工具链，macOS / Linux 使用 Node.js `^22.22.2`、`^24.15.0` 或 `>=26.0.0` |
 
 > [!NOTE]
-> 现有词典与回归用例包含上游 v2.34.0 相关界面。客户端每次升级都可能调整模块结构和注入位置，版本号相近也不等于已经验证兼容。
+> 现有词典与回归用例包含上游 v2.35.0 相关界面。客户端每次升级都可能调整模块结构和注入位置，版本号相近也不等于已经验证兼容。
 
 - **汉化范围**：主界面、顶部系统菜单、任务栏托盘与原生右键菜单、Sidecar 伴生面板（含 Swarm 面板与 `plugin://` 子框架）、主进程原生弹窗（退出确认、WSL/SSH 提示、设备与 Passkey 选择等）、更新弹窗、加载动画、设置面板、插件与自定义项、新手引导及登录页。
 - **内容隔离**：代码编辑器、终端、消息正文、思考内容、文件路径/URI、表单输入值与 `<option>` 提交值保持英文原文，不由汉化引擎改写。
@@ -117,8 +117,8 @@ cd Antigravity2CN
    /bin/bash ./restore-en.command --install-dir "$HOME/Applications/Antigravity.app"
    ```
 
-4. **官方更新后恢复汉化**：
-   macOS 暂无自检启动器；客户端更新完成并完全退出后，重新运行一次 `install-cn.command` 即可恢复简体中文。
+4. **macOS 客户端升级方式（重要差异）**：
+   由于汉化修改 `app.asar` 后必须执行本地 ad-hoc 重签名（`codesign --sign -`），应用包的 designated requirement 会退化为仅匹配当前包自身的 `cdhash`，导致内置自动更新（`Squirrel.framework`）在安装校验阶段拦截官方新版（`did not pass validation`），版本会停留在当前已安装版本。如需升级到官方新版，请先完全退出客户端，前往 [antigravity.google/download](https://antigravity.google/download) 下载最新版官方 DMG 覆盖替换 `~/Applications/Antigravity.app`，再重新运行一次 `install-cn.command` 恢复简体中文。
 
 ---
 
@@ -283,8 +283,10 @@ docs/security/                                             固定版本的历史
 - **7. 提示文件被占用或无法替换 `app.asar`？**
   请先保存工作并完全退出 Antigravity 及其托盘/后台进程，等待官方自动更新完成后，再带 `--no-kill` 重试；不要在官方更新解压写入过程中同时运行汉化。
 
-- **8. 客户端更新后恢复成英文，或新版本安装后缺少部分界面汉化？**
-  官方更新会整包覆盖 `app.asar`：Windows 使用 `launch-antigravity.bat` 启动即可自动补回，macOS 退出客户端后重新运行 `install-cn.command`。若新版本客户端调整了注入点或新增英文文案，可收集客户端版本号与控制台告警（先脱敏路径与会话信息），在隔离环境下更新词典/补丁并补充测试。
+- **8. 客户端自动更新后汉化失效，或 macOS 汉化后无法自动升级？**
+  - **Windows**：客户端内置 `electron-updater`（NSIS）会在退出时静默安装并整包覆盖 `resources/app.asar`，导致变回英文；使用 `launch-antigravity.bat` 启动即可自动自检并补回汉化，或完全退出后重跑 `install-cn.bat`。
+  - **macOS**：因本地 ad-hoc 重签名后应用包的 designated requirement 退化为当前包 `cdhash`，`Squirrel.framework` 校验官方更新包会失败（`did not pass validation`），版本会停留在旧版且不会自动变回英文。如需升级，请先完全退出客户端，前往 [antigravity.google/download](https://antigravity.google/download) 手动下载最新版 DMG 覆盖替换 `~/Applications/Antigravity.app`，再重跑 `install-cn.command`。
+  - 若新版本客户端调整了注入点或新增英文文案，可收集客户端版本号与控制台告警（先脱敏路径与会话信息），在隔离环境下更新词典/补丁并补充测试。
 
 - **9. 还原失败或提示 `app.asar.bak` 缺失？**
   切勿手动将已汉化的 `app.asar` 复制为 `app.asar.bak`，也不要混用其他版本的备份。请保留当前报错信息，先从 Antigravity 官方渠道重装/恢复原版客户端后，再重新执行汉化。
@@ -299,6 +301,6 @@ docs/security/                                             固定版本的历史
 
 ## 项目上游与来源
 
-- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上选择性同步了截至 `ae290fc0b040f86a1fe154e6f66dbbf85d1da510` 的简体中文界面汉化与 MIT 许可更新后继续独立维护。
+- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上选择性同步了截至 `710b13fb8c887ef33416cdf5e8441d1ea173422f` 的简体中文界面汉化与 MIT 许可更新后继续独立维护。
 - 词典来源致谢：[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)。感谢其开放的 MIT 协议词典成果，为上游早期版本及后续词条整合提供了重要基础。
 - 便携 Node.js 运行时：[Node.js](https://nodejs.org/)，使用官方固定版本；Windows 与 macOS 离线包中的 `.runtime/node-<版本>-<平台>-<架构>/LICENSE` 均保留 Node.js 原始许可证及第三方组件许可。

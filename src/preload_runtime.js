@@ -799,7 +799,7 @@
         [/^(?:Refreshes|You have (?:used (?:some|all) of|reached) your (?:weekly|5-hour) limit, it will fully refresh) in (\d+) minutes?\.?$/i, (m, min) => (min + " 分钟后刷新")],
         [/^(?:Refreshes|You have (?:used (?:some|all) of|reached) your (?:weekly|5-hour) limit, it will fully refresh) in less than a minute\.?$/i, () => "不到 1 分钟后刷新"],
         [/^(?:Refreshes|You have (?:used (?:some|all) of|reached) your (?:weekly|5-hour) limit, it will fully refresh) in a few seconds\.?$/i, () => "几秒后刷新"],
-        [/^Available AI Credits: (\d+)$/i, (m, num) => ("可用 AI 额度: " + num)],
+        [/^Available AI Credits:\s*(.+)$/i, (m, val) => "可用 AI 额度：" + val],
         [/^Your plan's baseline quota will refresh on (.+?)\.?\s*To continue using this model now, enable AI Credit overages\.?$/i, (m, when) => ("您方案的基础配额将于 " + when + " 刷新。如需立即继续使用此模型，请启用 AI 额度超量使用。")],
         [/^You have hit your (weekly|daily|monthly|\d+-hour) limit,\s*it (?:will refresh|refreshes) in (.+?)\.\s*If on a supported paid plan, you can use AI credits in the interim(?:\s*(or upgrade to a higher tier))?\.?$/i, (m, unit, when, upgrade) => {
             const u = unit.toLowerCase();
@@ -1312,6 +1312,16 @@
             return `您所在的地区目前暂不支持 ${target.trim()}${period}`;
         }],
         [/^Available for\s+(.+?)\s+project$/i, (m, proj) => '适用于 ' + proj.trim() + ' 项目'],
+
+        // v2.35.0 动态模板规则
+        [/^All (.+?) will be revoked\. The plugin will ask before doing this again\.$/, (m, target) => '将撤销全部 ' + target + '。插件在再次执行此操作前会先征求您的同意。'],
+        [/^Dismiss:\s*(.+)$/, (m, target) => '忽略：' + target],
+        [/^Move to\s+(.+)$/, (m, dest) => '移动到 ' + (lookupDict(dest) || dest)],
+        [/^New\s+(.+?)\.\.\.$/, (m, kind) => '新建' + translateNoun(kind) + '...'],
+        [/^No matching languages for "(.+)"$/, (m, q) => '未找到与“' + q + '”匹配的语言'],
+        [/^Remove from\s+(.+)$/, (m, target) => '从 ' + (lookupDict(target) || target) + ' 移除'],
+        [/^Revoke all:\s*(.+)$/, (m, target) => '全部撤销：' + target],
+        [/^Revoke:\s*(.+)$/, (m, target) => '撤销：' + target],
 
         // 安全白名单通用动作按钮模板（仅匹配受控 UI 实体名词，防止单字或代码标识符误翻）
         [/^(Add|Cancel|Close|Configure|Connect|Delete|Disconnect|Enable|Install|New|Open|Reconnect|Remove|Restart|Stop|Toggle|View)\s+(?:the\s+)?([a-zA-Z][a-zA-Z ]{1,30})(\??)$/i, (m, verb, noun, qMark) => {
