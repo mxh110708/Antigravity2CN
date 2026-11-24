@@ -19,7 +19,7 @@ New-Item -ItemType Directory -Path $stage -Force | Out-Null
 foreach ($name in @('localization_engine.js', 'README.md', 'LICENSE', 'src', 'dicts')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $stage -Recurse
 }
-foreach ($name in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat')) {
+foreach ($name in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat', 'update-cn.bat')) {
     $batPath = Join-Path $projectRoot $name
     if (-not (Test-Path -LiteralPath $batPath -PathType Leaf)) {
         throw "Missing required Windows launcher: $name"
@@ -28,7 +28,7 @@ foreach ($name in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat'
 }
 $scripts = Join-Path $stage 'scripts'
 New-Item -ItemType Directory -Path $scripts | Out-Null
-foreach ($name in @('node-runtime.json', 'portable_runtime.ps1', 'run_windows.ps1', 'ensure_localized.js')) {
+foreach ($name in @('node-runtime.json', 'portable_runtime.ps1', 'run_windows.ps1', 'ensure_localized.js', 'self_update.js', 'validate_dicts.js')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $scripts
 }
 # Reuse an already verified local cache where available; otherwise download from nodejs.org.
@@ -43,7 +43,11 @@ if (Test-Path -LiteralPath $cached) {
     }
 }
 $null = Get-PortableNode -ProjectRoot $stage -Architecture $Architecture
-$metadata = [ordered]@{ platform = 'windows'; sourceCommit = $SourceCommit; architecture = $Architecture; nodeVersion = (Get-Content -LiteralPath (Join-Path $scripts 'node-runtime.json') -Raw | ConvertFrom-Json).version }
+$pkgVersion = (Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json).version
+if ($pkgVersion -notmatch '^\d+\.\d+\.\d+$') {
+    throw "Missing or invalid version in package.json: $pkgVersion"
+}
+$metadata = [ordered]@{ platform = 'windows'; version = $pkgVersion; launcherVersion = 1; sourceCommit = $SourceCommit; architecture = $Architecture; nodeVersion = (Get-Content -LiteralPath (Join-Path $scripts 'node-runtime.json') -Raw | ConvertFrom-Json).version }
 $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'build-info.json') -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($stage, $archive, [IO.Compression.CompressionLevel]::Optimal, $true)

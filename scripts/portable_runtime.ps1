@@ -64,7 +64,18 @@ function Save-NodeRuntimeArchive {
     try {
         [Net.ServicePointManager]::SecurityProtocol = $oldProtocol -bor [Net.SecurityProtocolType]::Tls12
         $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $Destination -MaximumRedirection 0 -TimeoutSec 180
+        $proxy = if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } elseif ($env:HTTP_PROXY) { $env:HTTP_PROXY } else { '' }
+        $params = @{
+            UseBasicParsing = $true
+            Uri = $Uri
+            OutFile = $Destination
+            MaximumRedirection = 0
+            TimeoutSec = 180
+        }
+        if ($proxy -and $proxy -match '^https?://') {
+            $params.Proxy = $proxy
+        }
+        Invoke-WebRequest @params
     } finally {
         [Net.ServicePointManager]::SecurityProtocol = $oldProtocol
     }

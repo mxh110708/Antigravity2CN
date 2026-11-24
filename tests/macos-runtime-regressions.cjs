@@ -177,9 +177,13 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
     fs.writeFileSync(path.join(root, 'localization_engine.js'), '// synthetic engine\n');
     fs.writeFileSync(path.join(root, 'README.md'), '# synthetic readme\n');
     fs.writeFileSync(path.join(root, 'LICENSE'), 'MIT License\n');
-    for (const cmd of ['install-cn.command', 'restore-en.command']) {
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'antigravity2cn', version: '1.1.0' }) + '\n');
+    for (const cmd of ['install-cn.command', 'restore-en.command', 'update-cn.command']) {
         fs.copyFileSync(path.join(repo, cmd), path.join(root, cmd));
         fs.chmodSync(path.join(root, cmd), 0o755);
+    }
+    for (const helper of ['self_update.js', 'validate_dicts.js']) {
+        fs.writeFileSync(path.join(root, 'scripts', helper), '// stub helper\n');
     }
     fs.mkdirSync(path.join(root, 'src'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src/asar_patcher.js'), '// stub\n');
@@ -234,12 +238,15 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
         'LICENSE',
         'install-cn.command',
         'restore-en.command',
+        'update-cn.command',
         'build-info.json',
         'src/asar_patcher.js',
         'dicts/common.json',
         'scripts/node-runtime.json',
         'scripts/portable_runtime.sh',
         'scripts/run_macos.sh',
+        'scripts/self_update.js',
+        'scripts/validate_dicts.js',
         `.runtime/${dirName}/node`,
         `.runtime/${dirName}/LICENSE`,
     ]) {
@@ -254,6 +261,7 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
     for (const execRel of [
         'install-cn.command',
         'restore-en.command',
+        'update-cn.command',
         'scripts/run_macos.sh',
         'scripts/portable_runtime.sh',
         `.runtime/${dirName}/node`,
@@ -264,6 +272,8 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
     assert.deepEqual(buildInfo, {
         platform: 'macos',
         architecture: 'arm64',
+        version: '1.1.0',
+        launcherVersion: 1,
         sourceCommit: 'deadbeef1234',
         nodeVersion: manifest.version,
     });

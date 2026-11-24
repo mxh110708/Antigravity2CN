@@ -69,7 +69,7 @@ fi
 mkdir -p "$STAGE"
 
 # Explicit allowlist prevents tests, Windows files, credentials, caches or local configuration entering releases.
-for rel_file in localization_engine.js README.md LICENSE install-cn.command restore-en.command; do
+for rel_file in localization_engine.js README.md LICENSE install-cn.command restore-en.command update-cn.command; do
     if [ ! -f "$PROJECT_ROOT/$rel_file" ]; then
         printf '%s\n' "Missing required macOS package file: $rel_file" >&2
         exit 1
@@ -86,7 +86,7 @@ for rel_dir in src dicts; do
 done
 
 mkdir -p "$STAGE/scripts"
-for script_name in node-runtime.json portable_runtime.sh run_macos.sh; do
+for script_name in node-runtime.json portable_runtime.sh run_macos.sh self_update.js validate_dicts.js; do
     if [ ! -f "$SCRIPT_DIR/$script_name" ]; then
         printf '%s\n' "Missing required macOS script: scripts/$script_name" >&2
         exit 1
@@ -109,15 +109,24 @@ STAGE_NODE="$(get_portable_node "$STAGE" "$ARCH")"
 chmod 0755 \
     "$STAGE/install-cn.command" \
     "$STAGE/restore-en.command" \
+    "$STAGE/update-cn.command" \
     "$STAGE/scripts/run_macos.sh" \
     "$STAGE/scripts/portable_runtime.sh" \
     "$STAGE_NODE"
+
+PKG_VERSION="$("$_PR_AWK_BIN" -F'"' '/"version"[ \t]*:/ { print $4; exit }' "$PROJECT_ROOT/package.json")"
+if ! printf '%s' "$PKG_VERSION" | "$_PR_AWK_BIN" 'BEGIN { ok = 0 } /^[0-9]+\.[0-9]+\.[0-9]+$/ { ok = 1 } END { exit (ok ? 0 : 1) }'; then
+    printf '%s\n' "Missing or invalid version in package.json: $PKG_VERSION" >&2
+    exit 1
+fi
 
 ESCAPED_COMMIT="$(printf '%s' "$SOURCE_COMMIT" | "$_PR_AWK_BIN" '{gsub(/\\/, "\\\\"); gsub(/"/, "\\\""); printf "%s", $0}')"
 cat > "$STAGE/build-info.json" <<EOF
 {
   "platform": "macos",
   "architecture": "$ARCH",
+  "version": "$PKG_VERSION",
+  "launcherVersion": 1,
   "sourceCommit": "$ESCAPED_COMMIT",
   "nodeVersion": "$_PR_SPEC_VERSION"
 }

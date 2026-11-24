@@ -8,8 +8,8 @@ set -e
 
 MODE="${1:-}"
 case "$MODE" in
-    install|restore|runtime) shift ;;
-    *) printf '%s\n' 'Usage: run_macos.sh install|restore|runtime [engine arguments]' >&2; exit 1 ;;
+    install|restore|runtime|update|config) shift ;;
+    *) printf '%s\n' 'Usage: run_macos.sh install|restore|runtime|update|config [arguments]' >&2; exit 1 ;;
 esac
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -28,7 +28,26 @@ unset NODE_OPTIONS NODE_PATH
 if [ "$MODE" = runtime ]; then
     exec "$NODE_BIN" --version
 fi
+if [ "$MODE" = update ]; then
+    exec "$NODE_BIN" "$SCRIPT_DIR/scripts/self_update.js" apply --reinstall "$@"
+fi
+if [ "$MODE" = config ]; then
+    exec "$NODE_BIN" "$SCRIPT_DIR/scripts/self_update.js" config "$@"
+fi
 if [ "$MODE" = restore ]; then
     exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" --huifu "$@"
 fi
-exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" "$@"
+
+SKIP_UPDATE_CHECK=0
+FILTERED_ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--no-update-check" ]; then
+        SKIP_UPDATE_CHECK=1
+    else
+        FILTERED_ARGS+=("$arg")
+    fi
+done
+if [ "$SKIP_UPDATE_CHECK" -eq 0 ] && [ -f "$SCRIPT_DIR/scripts/self_update.js" ]; then
+    "$NODE_BIN" "$SCRIPT_DIR/scripts/self_update.js" auto --quiet-when-off || true
+fi
+exec "$NODE_BIN" "$SCRIPT_DIR/localization_engine.js" ${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}

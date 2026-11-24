@@ -70,16 +70,30 @@ function loadDictionary() {
     return totalMap;
 }
 
+function readToolVersion(rootDir = __dirname) {
+    for (const rel of ['build-info.json', 'package.json']) {
+        const filePath = path.join(rootDir, rel);
+        if (!fs.existsSync(filePath)) continue;
+        try {
+            const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            const v = String(parsed && parsed.version || '').trim().replace(/^v/i, '');
+            if (/^\d+\.\d+\.\d+$/.test(v)) return v;
+        } catch (_e) {}
+    }
+    return '0.0.0';
+}
+
 function generateJs() {
     const fullDict = loadDictionary();
     const dictJson = JSON.stringify(fullDict);
     const runtimePath = path.join(__dirname, 'src', 'preload_runtime.js');
     const runtimeTemplate = fs.readFileSync(runtimePath, 'utf-8');
+    const version = readToolVersion(__dirname);
 
     const body = runtimeTemplate
         .replace('DICT_PLACEHOLDER', () => dictJson);
 
-    return `${SIGNATURE_START}\n/* ANTIGRAVITY PRIVATE LOCALE: zh-CN */\n/* ANTIGRAVITY BRAND: Antigravity */\n${body}\n${SIGNATURE_END}`;
+    return `${SIGNATURE_START}\n/* ANTIGRAVITY PRIVATE LOCALE: zh-CN */\n/* ANTIGRAVITY BRAND: Antigravity */\n/* ANTIGRAVITY2CN VERSION: ${version} */\n${body}\n${SIGNATURE_END}`;
 }
 
 let wasAppRunning = false;
@@ -696,6 +710,7 @@ function main() {
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+        readToolVersion,
         generateJs,
         ensureWritePermission,
         resignAppOnMac,

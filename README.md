@@ -106,7 +106,7 @@ cd Antigravity2CN
    ```
    - **首次双击遇权限或安全提示**：
      - 如果解压工具丢失了可执行权限，可在项目目录执行：
-       `chmod +x install-cn.command restore-en.command scripts/run_macos.sh scripts/portable_runtime.sh`
+       `chmod +x install-cn.command restore-en.command update-cn.command scripts/run_macos.sh scripts/portable_runtime.sh`
        或直接使用上面的 `/bin/bash ./install-cn.command` 运行。
      - 如果 macOS 提示“无法验证开发者”或安全拦截，可在终端右键点击脚本选择“打开”，或在“系统设置 -> 隐私与安全性”中点击“仍要打开”。
    - **签名与完整性更新**：引擎仅修改用户自己的 `.app` 资源，同步更新 `Contents/Info.plist` 中的 `ElectronAsarIntegrity` 校验值，并调用系统绝对路径 `/usr/bin/xattr` 与 `/usr/bin/codesign` 完成本地 ad-hoc 深度重签名（注意：本地 ad-hoc 重签名不是官方开发者签名，不能作为官方发布者认证）。
@@ -130,9 +130,43 @@ cd Antigravity2CN
 | --- | --- | --- | --- |
 | `install-cn.bat` | Windows | `scripts/run_windows.ps1 install` | 安装 / 更新简体中文汉化 |
 | `restore-en.bat` | Windows | `scripts/run_windows.ps1 restore` | 使用 `app.asar.bak` 还原官方英文版 |
-| `launch-antigravity.bat` | Windows | `scripts/run_windows.ps1 launch` | 启动前自检并在未运行时自动补回汉化 |
+| `launch-antigravity.bat` | Windows | `scripts/run_windows.ps1 launch` | 启动前自检并在未运行时自动补回/升级汉化 |
+| `update-cn.bat` | Windows | `scripts/run_windows.ps1 update` | 检查并在线升级本汉化工具（轻量载荷包），完成后自动重新注入 |
 | `install-cn.command` | macOS | `scripts/run_macos.sh install` | 安装 / 更新简体中文汉化并重签名 |
 | `restore-en.command` | macOS | `scripts/run_macos.sh restore` | 使用 `app.asar.bak` 还原官方英文版并重签名 |
+| `update-cn.command` | macOS | `scripts/run_macos.sh update` | 检查并在线升级本汉化工具（轻量载荷包），完成后自动重新注入并重签名 |
+
+### 可选在线更新与自定义代理
+
+离线便携包默认**完全关闭联网**（`autoUpdate = off`），不会主动连接外网。如需从 `v1.0` 升级至新版本汉化，可按需手动触发或开启可选自动检查（仅更新本工具自身词典与引擎，绝不向 Antigravity 客户端注入任何代理配置，也不会修改系统代理）：
+
+- **手动升级（单次指定 HTTP/HTTPS 代理或直连）**：
+  ```powershell
+  # Windows
+  .\update-cn.bat --proxy http://127.0.0.1:2080
+  .\update-cn.bat --no-proxy
+  ```
+  ```sh
+  # macOS（仅普通用户，禁止 sudo）
+  /bin/bash ./update-cn.command --proxy http://127.0.0.1:2080
+  ```
+- **持久化配置自动检查与代理地址**（配置保存在当前用户应用配置目录 `Antigravity2CN/updater.json`，不写入项目目录）：
+  ```powershell
+  # Windows 示例：开启启动/安装前自动静默升级，设置代理与 24 小时冷却
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_windows.ps1 config --auto-update auto --set-proxy http://127.0.0.1:2080 --interval 24
+  # 查看当前配置 / 清除代理 / 关闭自动检查
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_windows.ps1 config --show
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_windows.ps1 config --clear-proxy --auto-update off
+  ```
+  ```sh
+  # macOS 示例
+  /bin/bash ./scripts/run_macos.sh config --auto-update prompt --set-proxy http://127.0.0.1:2080
+  ```
+- **代理优先级与安全校验**：
+  - 优先级：`--no-proxy` > `--proxy <url>` > `updater.json` 中保存的 `proxy` > 环境变量 `HTTPS_PROXY` / `HTTP_PROXY`（遵循 `NO_PROXY`）。
+  - 仅下载 Release 中的轻量跨平台载荷包 `antigravity2cn-payload.zip`（约 150–300 KB，不触碰运行中的 `.runtime/`），强制校验 `.sha256`、清单逐文件 SHA-256、路径白名单、JS 语法与词典完整性，失败自动回滚；若新版修改了外壳脚本或升级了 Node.js 运行时，会自动中止并提示下载完整平台包。
+  - 启动/安装前可选自动检查默认 24 小时冷却、5 秒超时，**网络或代理失败绝不阻塞正常启动或安装**；单次传入 `--no-update-check` 可跳过当次自动检查。
+  - 若仓库当前为私有仓库，可通过环境变量 `ANTIGRAVITY2CN_GITHUB_TOKEN` 提供仅限本仓库只读权限的 PAT（跨域重定向至资产 CDN 时会自动剥离认证头）；公开仓库无需任何 Token。
 
 ### 命令行参数
 
@@ -227,33 +261,36 @@ cd Antigravity2CN
 ```text
 LICENSE                                                    MIT 开源协议（保留上游与本仓库版权声明）
 install-cn.bat / restore-en.bat / launch-antigravity.bat   Windows 快捷入口（纯 ASCII + CRLF）
-install-cn.command / restore-en.command                    macOS 快捷入口（UTF-8 + LF + +x）
+update-cn.bat                                              Windows 可选在线升级入口（纯 ASCII + CRLF）
+install-cn.command / restore-en.command / update-cn.command macOS 快捷入口（UTF-8 + LF + +x）
 localization_engine.js                                     核心安装、备份、还原与平台安全检查引擎
 src/
   ├── asar_patcher.js                                      ASAR 解析、重包与候选包校验
   ├── main_patches.js                                      主进程菜单、托盘、弹窗与 Sidecar 补丁
-  └── preload_runtime.js                                   前端 DOM 动态翻译与内容隔离运行时
+  ├── preload_runtime.js                                   前端 DOM 动态翻译与内容隔离运行时
+  └── zip_utils.js                                         零依赖 ZIP 读写与安全解析工具
 dicts/                                                     简体中文分模块词典（6 个 JSON）
 scripts/
   ├── run_windows.ps1 / portable_runtime.ps1               Windows 共用启动器与便携运行时校验
   ├── run_macos.sh / portable_runtime.sh                   macOS 共用启动器与便携运行时校验
+  ├── self_update.js                                       零依赖可选在线更新器（含 HTTP/HTTPS 代理支持）
+  ├── build_payload.js                                     跨平台轻量更新载荷包（payload.zip）构建器
   ├── node-runtime.json                                    双平台固定 Node.js 版本与 SHA-256 清单
   ├── build_windows_package.ps1 / build_macos_package.sh   Windows / macOS 分平台离线包构建脚本
   ├── dev.ps1 / dev_toolchain.ps1                          Windows 项目独立开发工具链
-  ├── ensure_localized.js                                  Windows 启动前自检与修复
+  ├── ensure_localized.js                                  Windows 启动前自检、版本升级检测与修复
   ├── check_syntax.js / check_powershell.ps1               源码与 PowerShell 5.1 语法检查
   ├── validate_dicts.js                                    简体词典校验器
   └── dev_tool.js                                          可选本地语言服务器诊断工具
 tests/                                                     隔离回归与安全边界测试套件
-docs/security/                                             固定版本的历史审查与维护记录
+docs/security/                                             固定版本的维护记录快照
 ```
 
 - **GitHub Actions**（[`.github/workflows/tests.yml`](.github/workflows/tests.yml)）：
   - 在 `ubuntu-latest`、`windows-latest`、`macos-latest` 上使用 Node 24 执行锁定依赖安装（禁用生命周期脚本）、源码/词典检查、PowerShell / bash 静态检查与隔离回归测试（不操作真实客户端）。
-  - 三平台测试全部通过后，分别构建 **Windows（`x64`、`arm64`）** 与 **macOS（`arm64`、`x64`）** 四个独立离线包并生成 `.sha256`；对可执行的原生架构成品在无系统 Node、离线条件下验证包内文件隔离、可执行权限、运行时与共用启动器。
+  - 三平台测试全部通过后，分别构建 **Windows（`x64`、`arm64`）** 与 **macOS（`arm64`、`x64`）** 四个独立离线包以及跨平台轻量更新包 **`antigravity2cn-payload.zip`** 并生成对应 `.sha256`；对可执行的原生架构成品在无系统 Node、离线条件下验证包内文件隔离、可执行权限、运行时与共用启动器。
   - 工作流仅申请 `contents: read`、checkout 不保留凭据、所有官方 Actions 均固定到完整提交 SHA。
-- **历史安全审查与维护记录**：
-  - [2026-11-21 安全审查记录](docs/security/2026-11-21/README.md) 对应修复前固定提交（仅作历史存档，其中可能提及已删除功能）。
+- **历史维护记录**：
   - [2026-11-22 维护记录](docs/security/2026-11-22/README.md) 记录初始安全修复快照，部分早期描述（如旧品牌偏好沿用）已被后续固定英文品牌与双平台分包提交取代，当前行为以本 README 与最新源码为准。
 
 ---
@@ -264,7 +301,7 @@ docs/security/                                             固定版本的历史
   您使用的可能是旧版入口。请重新获取本版完整代码或从 Releases 下载 `antigravity2cn-windows-<架构>.zip` 后运行 `install-cn.bat`，无需在本机单独安装 Node.js。
 
 - **2. 首次运行源码版时无法下载运行时 / 无法连接 `nodejs.org`？**
-  源码包首次运行缺少 `.runtime/` 时需要从 `nodejs.org` 下载固定版本；本项目不会自动切换代理或使用第三方镜像。受限网络环境请直接下载 Releases 中对应平台与架构的完整离线包，解压后即可离线使用。
+  源码包首次运行缺少 `.runtime/` 时需要从 `nodejs.org` 下载固定版本；可先在终端设置环境变量 `HTTPS_PROXY`（如 `http://127.0.0.1:2080`），或直接下载 Releases 中对应平台与架构的完整离线包，解压后即可离线使用。
 
 - **3. 提示运行时 SHA-256 校验失败或 `.runtime` 不完整 / 符号链接被拒绝？**
   程序拒绝使用校验失败或非普通文件/目录的缓存。请删除项目下的 `.runtime/` 后通过可信网络重新运行源码入口，或重新下载并核对官方 Release 离线包，切勿跳过校验或替换未知来源的可执行文件。
@@ -276,7 +313,7 @@ docs/security/                                             固定版本的历史
   使用 `--install-dir` 指向真实的 Antigravity 客户端目录（确认其中包含 `resources/app.asar` 或 `Contents/Resources/app.asar`），不要指向本汉化包目录或安装包 `.exe`/`.dmg`。
 
 - **6. macOS 双击 `.command` 提示无法打开、没有执行权限，或提示无写入权限 / 拒绝 root？**
-  - **执行权限**：在终端进入解压目录执行 `chmod +x install-cn.command restore-en.command scripts/run_macos.sh scripts/portable_runtime.sh`，或改用 `/bin/bash ./install-cn.command`。
+  - **执行权限**：在终端进入解压目录执行 `chmod +x install-cn.command restore-en.command update-cn.command scripts/run_macos.sh scripts/portable_runtime.sh`，或改用 `/bin/bash ./install-cn.command`。
   - **系统安全拦截**：在“系统设置 -> 隐私与安全性”中点击“仍要打开”。
   - **权限不足或拒绝 root**：退出 `sudo`/root 会话，将应用复制到当前用户拥有的 `~/Applications/Antigravity.app` 后再运行；程序不会提权或修改系统应用目录所有权。
 

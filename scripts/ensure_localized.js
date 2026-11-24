@@ -196,6 +196,42 @@ function isRunning(installDir, execFileSyncFn = child_process.execFileSync) {
     return lines.some(p => path.dirname(path.resolve(p)).toLowerCase() === target);
 }
 
+function readLocalVersion(rootDir = ROOT) {
+    for (const rel of ['build-info.json', 'package.json']) {
+        const filePath = path.join(rootDir, rel);
+        if (!fs.existsSync(filePath)) continue;
+        try {
+            const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            const v = String(parsed && parsed.version || '').trim().replace(/^v/i, '');
+            if (/^\d+\.\d+\.\d+$/.test(v)) return v;
+        } catch (_e) {}
+    }
+    return null;
+}
+
+function compareSemver(a, b) {
+    const pa = String(a || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10));
+    const pb = String(b || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10));
+    if (pa.length !== 3 || pb.length !== 3 || pa.some(Number.isNaN) || pb.some(Number.isNaN)) {
+        return 0;
+    }
+    for (let i = 0; i < 3; i++) {
+        if (pa[i] !== pb[i]) return pa[i] > pb[i] ? 1 : -1;
+    }
+    return 0;
+}
+
+function getInjectedVersion(asarPath) {
+    const body = fs.readFileSync(asarPath);
+    const marker = Buffer.from('/* ANTIGRAVITY2CN VERSION: ');
+    const idx = body.indexOf(marker);
+    if (idx === -1) return null;
+    const endIdx = body.indexOf(Buffer.from(' */'), idx + marker.length);
+    if (endIdx === -1 || endIdx - (idx + marker.length) > 32) return null;
+    const raw = body.subarray(idx + marker.length, endIdx).toString('utf8').trim();
+    return /^\d+\.\d+\.\d+$/.test(raw) ? raw : null;
+}
+
 function isLocalized(asarPath) {
     const body = fs.readFileSync(asarPath);
     return [SIGNATURE_START, LOCALE_MARKER, BRAND_MARKER].every(marker => body.includes(Buffer.from(marker)));
@@ -252,6 +288,9 @@ function main(argv = process.argv.slice(2), deps = {}) {
 
     const asarPath = path.join(installDir, 'resources', 'app.asar');
     let localized = isLocalized(asarPath);
+    const localVersion = deps.localVersion !== undefined ? deps.localVersion : readLocalVersion(ROOT);
+    let injectedVersion = localized ? getInjectedVersion(asarPath) : null;
+    let needsUpgrade = Boolean(localized && injectedVersion && localVersion && compareSemver(localVersion, injectedVersion) > 0);
     const logger = createLogger();
 
     let running;
@@ -264,7 +303,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
 
     const pending = pendingUpdate();
     logger.log(`[检测] 安装目录: ${installDir}`);
-    logger.log(`[检测] 汉化状态: ${localized ? '已汉化' : '未汉化（可能已被官方自动更新覆盖）'}`);
+    logger.log(`[检测] 汉化状态: ${localized ? (needsUpgrade ? `已汉化 (v${injectedVersion})，本地工具已更新至 v${localVersion}` : '已汉化') : '未汉化（可能已被官方自动更新覆盖）'}`);
     logger.log(`[检测] 运行状态: ${running ? '正在运行' : '未运行'}`);
     if (pending) {
         logger.log(`[提示] 检测到已下载的官方更新包: ${pending}`);
@@ -272,7 +311,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
     }
 
     let fixFailed = false;
-    if (!localized && parsed.fix) {
+    if ((!localized || needsUpgrade) && parsed.fix) {
         if (running) {
             logger.log('[跳过] Antigravity 正在运行，为避免强制关闭您的会话，本次不自动修复。请完全退出后再运行。');
         } else {
@@ -293,7 +332,9 @@ function main(argv = process.argv.slice(2), deps = {}) {
                 { stdio: 'inherit', cwd: ROOT }
             );
             localized = res.status === 0 && isLocalized(asarPath);
-            if (localized) {
+            injectedVersion = localized ? getInjectedVersion(asarPath) : null;
+            needsUpgrade = Boolean(localized && injectedVersion && localVersion && compareSemver(localVersion, injectedVersion) > 0);
+            if (localized && !needsUpgrade) {
                 logger.log('[√] 汉化已恢复。');
             } else {
                 fixFailed = true;
@@ -314,7 +355,7 @@ function main(argv = process.argv.slice(2), deps = {}) {
         }
     }
 
-    return localized ? 0 : 2;
+    return localized && !needsUpgrade ? 0 : 2;
 }
 
 if (require.main === module) {
@@ -332,6 +373,9 @@ module.exports = {
     cleanRegistryIconPath,
     detectInstallDir,
     isRunning,
+    readLocalVersion,
+    compareSemver,
+    getInjectedVersion,
     isLocalized,
     launch,
     main
