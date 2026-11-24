@@ -16,7 +16,7 @@ if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $archive)) {
 }
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 # Explicit allowlist prevents tests, credentials, caches or local configuration entering releases.
-foreach ($name in @('localization_engine.js', 'README.md', 'src', 'dicts')) {
+foreach ($name in @('localization_engine.js', 'README.md', 'LICENSE', 'src', 'dicts')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $stage -Recurse
 }
 foreach ($name in @('install-cn.bat', 'restore-en.bat', 'launch-antigravity.bat')) {

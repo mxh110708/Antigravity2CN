@@ -225,6 +225,7 @@ cd Antigravity2CN
 ## 项目文件结构与自动化流程
 
 ```text
+LICENSE                                                    MIT 开源协议（保留上游与本仓库版权声明）
 install-cn.bat / restore-en.bat / launch-antigravity.bat   Windows 快捷入口（纯 ASCII + CRLF）
 install-cn.command / restore-en.command                    macOS 快捷入口（UTF-8 + LF + +x）
 localization_engine.js                                     核心安装、备份、还原与平台安全检查引擎
@@ -290,8 +291,14 @@ docs/security/                                             固定版本的历史
 
 ---
 
+## 开源协议
+
+本项目采用与上游同步的 [MIT License](LICENSE) 开源协议，保留上游与本仓库的版权声明；Windows 与 macOS 离线发行包根目录均随附本仓库 `LICENSE`，并在 `.runtime/` 中保留对应版本 Node.js 的原始 `LICENSE`。
+
+---
+
 ## 项目上游与来源
 
-- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上进行独立维护。
-- 词典来源致谢：[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)。上游 README 对部分词典成果标注了 MIT 来源（仅针对相应词典成果，不代表整库采用 MIT；本仓库未设置整库开源许可）。
+- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上选择性同步了截至 `ae290fc0b040f86a1fe154e6f66dbbf85d1da510` 的简体中文界面汉化与 MIT 许可更新后继续独立维护。
+- 词典来源致谢：[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)。感谢其开放的 MIT 协议词典成果，为上游早期版本及后续词条整合提供了重要基础。
 - 便携 Node.js 运行时：[Node.js](https://nodejs.org/)，使用官方固定版本；Windows 与 macOS 离线包中的 `.runtime/node-<版本>-<平台>-<架构>/LICENSE` 均保留 Node.js 原始许可证及第三方组件许可。

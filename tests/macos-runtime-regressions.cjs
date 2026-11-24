@@ -176,6 +176,7 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
     // Minimal valid project files + decoy Windows/test files that must NOT be packaged.
     fs.writeFileSync(path.join(root, 'localization_engine.js'), '// synthetic engine\n');
     fs.writeFileSync(path.join(root, 'README.md'), '# synthetic readme\n');
+    fs.writeFileSync(path.join(root, 'LICENSE'), 'MIT License\n');
     for (const cmd of ['install-cn.command', 'restore-en.command']) {
         fs.copyFileSync(path.join(repo, cmd), path.join(root, cmd));
         fs.chmodSync(path.join(root, cmd), 0o755);
@@ -230,6 +231,7 @@ test('build_macos_package.sh builds standalone macOS archive without Windows fil
     for (const required of [
         'localization_engine.js',
         'README.md',
+        'LICENSE',
         'install-cn.command',
         'restore-en.command',
         'build-info.json',

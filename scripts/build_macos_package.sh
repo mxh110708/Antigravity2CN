@@ -69,7 +69,7 @@ fi
 mkdir -p "$STAGE"
 
 # Explicit allowlist prevents tests, Windows files, credentials, caches or local configuration entering releases.
-for rel_file in localization_engine.js README.md install-cn.command restore-en.command; do
+for rel_file in localization_engine.js README.md LICENSE install-cn.command restore-en.command; do
     if [ ! -f "$PROJECT_ROOT/$rel_file" ]; then
         printf '%s\n' "Missing required macOS package file: $rel_file" >&2
         exit 1

@@ -747,3 +747,32 @@ test('v2.34.0 orchestrator settings, sidebar customization, dynamic templates an
     assert.equal(w.document.getElementById('sys-click').querySelector('span').textContent, '在“系统设置”中，点击 ');
     assert.equal(w.document.getElementById('already-on').querySelector('span').textContent, '已经开启？请选择 ');
 });
+
+test('region eligibility errors, login FAQ link, Available for project, and step counters translate in Simplified Chinese', async t => {
+    const html = `
+      <div>
+        <p id="loc-err">Your current account is not eligible for Antigravity, because it is not currently available in your location.</p>
+        <p id="not-elig">This account is not eligible for Antigravity.</p>
+        <p id="reg-unsup">Your current region is not supported.</p>
+        <p id="faq-wrap">Please verify your account, then sign in again to continue. Learn more by visiting our <a id="faq-link" href="#">FAQ</a>.</p>
+        <span id="verify-btn">Verify</span>
+        <span id="lower-verify">verify</span>
+        <span id="avail-proj">Available for my-gcp-proj project</span>
+        <span id="avail-proj-split">Available for <code>my-gcp-proj</code> project</span>
+        <span id="plan-steps" aria-label="Plan, 3 of 5 steps done"></span>
+        <span id="q-of" aria-label="Question 2 of 4"></span>
+      </div>
+    `;
+
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('loc-err').textContent, '您当前的账户无权使用 Antigravity，因为您所在的地区目前暂不支持此服务。');
+    assert.equal(w.document.getElementById('not-elig').textContent, '当前账户无权使用 Antigravity。');
+    assert.equal(w.document.getElementById('reg-unsup').textContent, '当前不支持您所在的地区。');
+    assert.equal(w.document.getElementById('faq-link').textContent, '常见问题');
+    assert.equal(w.document.getElementById('verify-btn').textContent, '验证');
+    assert.equal(w.document.getElementById('lower-verify').textContent, 'verify');
+    assert.equal(w.document.getElementById('avail-proj').textContent, '适用于 my-gcp-proj 项目');
+    assert.equal(w.document.getElementById('avail-proj-split').textContent, '适用于 my-gcp-proj 项目');
+    assert.equal(w.document.getElementById('plan-steps').getAttribute('aria-label'), '计划，已完成 3 / 5 步');
+    assert.equal(w.document.getElementById('q-of').getAttribute('aria-label'), '第 2 / 4 个问题');
+});
