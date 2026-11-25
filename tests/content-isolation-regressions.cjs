@@ -810,3 +810,40 @@ test('v2.35.0 inbox mode, dictation languages, plugin permissions and dynamic te
     assert.equal(w.document.getElementById('rev-all').textContent, '全部撤销');
     assert.equal(w.document.getElementById('rev-one').getAttribute('aria-label'), '撤销：Read files');
 });
+
+test('v2.35.1 deep audit strings, dynamic templates and split DOM nodes translate in Simplified Chinese', async t => {
+    const html = `
+      <div>
+        <span id="answered">Answered in chat</span>
+        <span id="auto-res">Auto-Resolve</span>
+        <button id="back5" aria-label="Back 5s (←)">b</button>
+        <span id="clone-loc">Clone locally</span>
+        <span id="site-reach">This site can’t be reached</span>
+        <span id="page-work">This page isn’t working</span>
+        <p id="quota-reset">Your quota for Gemini 4 Pro will reset on Dec 1, 2026. Switch to another available model to continue.</p>
+        <p id="need-credits">You need at least 50 AI Credits to send messages. To continue using Gemini 4 Pro now, purchase more AI Credits.</p>
+        <span id="retry-in">Model unavailable, retrying in 5s (attempt 2/3)</span>
+        <span id="attach-img">3 image attachments</span>
+        <span id="left-hm">2h 15m left</span>
+        <span id="best-of">Start Best-of-<span>3</span></span>
+        <div id="gen-steps">Generation Steps (<span>4</span>)</div>
+        <div id="no-mcp">No MCP servers found for "<span>foo</span>"</div>
+      </div>
+    `;
+
+    const w = await fixture(t, html);
+    assert.equal(w.document.getElementById('answered').textContent, '已在聊天中回复');
+    assert.equal(w.document.getElementById('auto-res').textContent, '自动解决');
+    assert.equal(w.document.getElementById('back5').getAttribute('aria-label'), '后退 5 秒 (←)');
+    assert.equal(w.document.getElementById('clone-loc').textContent, '克隆到本地');
+    assert.equal(w.document.getElementById('site-reach').textContent, '无法访问此网站');
+    assert.equal(w.document.getElementById('page-work').textContent, '此页面无法正常运作');
+    assert.equal(w.document.getElementById('quota-reset').textContent, '您的 Gemini 4 Pro 配额将于 Dec 1, 2026 重置。请切换至其他可用模型以继续。');
+    assert.equal(w.document.getElementById('need-credits').textContent, '您需要至少 50 AI 额度才能发送消息。要立即继续使用 Gemini 4 Pro，请购买更多 AI 额度。');
+    assert.equal(w.document.getElementById('retry-in').textContent, '模型暂不可用，5 秒后重试（第 2/3 次尝试）');
+    assert.equal(w.document.getElementById('attach-img').textContent, '3 张图片附件');
+    assert.equal(w.document.getElementById('left-hm').textContent, '剩余 2 小时 15 分钟');
+    assert.equal(w.document.getElementById('best-of').textContent, '启动 Best-of-3');
+    assert.equal(w.document.getElementById('gen-steps').textContent, '生成步骤 (4)');
+    assert.equal(w.document.getElementById('no-mcp').textContent, '未找到与“foo”匹配的 MCP 服务器');
+});

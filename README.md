@@ -18,7 +18,7 @@
 | 开发测试环境 | 使用锁定的 `jsdom` 开发依赖；Windows 可用 `scripts/dev.ps1` 准备项目内开发工具链，macOS / Linux 使用 Node.js `^22.22.2`、`^24.15.0` 或 `>=26.0.0` |
 
 > [!NOTE]
-> 现有词典与回归用例包含上游 v2.35.0 相关界面。客户端每次升级都可能调整模块结构和注入位置，版本号相近也不等于已经验证兼容。
+> 现有词典与回归用例包含上游 v2.35.1 相关界面。客户端每次升级都可能调整模块结构和注入位置，版本号相近也不等于已经验证兼容。
 
 - **汉化范围**：主界面、顶部系统菜单、任务栏托盘与原生右键菜单、Sidecar 伴生面板（含 Swarm 面板与 `plugin://` 子框架）、主进程原生弹窗（退出确认、WSL/SSH 提示、设备与 Passkey 选择等）、更新弹窗、加载动画、设置面板、插件与自定义项、新手引导及登录页。
 - **内容隔离**：代码编辑器、终端、消息正文、思考内容、文件路径/URI、表单输入值与 `<option>` 提交值保持英文原文，不由汉化引擎改写。
@@ -338,6 +338,6 @@ docs/security/                                             固定版本的维护
 
 ## 项目上游与来源
 
-- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上选择性同步了截至 `710b13fb8c887ef33416cdf5e8441d1ea173422f` 的简体中文界面汉化与 MIT 许可更新后继续独立维护。
+- 主要上游：[qqxpee/antigravity2-cn](https://github.com/qqxpee/antigravity2-cn)。本仓库从其 `f7a0c4ebe088917bdc5121ac9b3bbad1c89b6059` 独立导入，保留作者提交历史，并在此基础上选择性同步了截至 `1f4e9eabac0b4d531fd1acec910efded71dcb8ed` 的简体中文界面汉化与 MIT 许可更新后继续独立维护。
 - 词典来源致谢：[yiheng8023/antigravity-chinese](https://github.com/yiheng8023/antigravity-chinese)。感谢其开放的 MIT 协议词典成果，为上游早期版本及后续词条整合提供了重要基础。
 - 便携 Node.js 运行时：[Node.js](https://nodejs.org/)，使用官方固定版本；Windows 与 macOS 离线包中的 `.runtime/node-<版本>-<平台>-<架构>/LICENSE` 均保留 Node.js 原始许可证及第三方组件许可。

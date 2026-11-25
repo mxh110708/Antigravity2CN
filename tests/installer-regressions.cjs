@@ -679,3 +679,26 @@ test('default and explicit English installs never prompt and ignore legacy brand
         assert.equal(fs.readFileSync(prefsPath, 'utf8'), originalPrefs);
     }
 });
+
+test('main-process patches cover v2.35.1 remote disconnectedPage and signInCallback HTML', () => {
+    const discOrig = [
+        "const BUTTON_LABELS = { reconnect: 'Reconnect', stop: 'Stop Server', close: 'Close', };",
+        "const title = restarting ? 'Restarting…' : connecting ? 'Reconnecting…' : 'Disconnected';",
+        "const heading = restarting ? `Restarting the Antigravity server on ${host}…` : connecting ? `Reconnecting to ${host}…` : `Disconnected from ${host}`;",
+        "const body = restarting ? 'This window opens it again once it has started.' : connecting ? page.serverStopped ? `Its server on ${host} stopped, and its agents with it.` : `Agents keep running on ${host}.` : page.serverStopped ? `Its agents on ${host} stopped with it.` : `Agents keep running on ${host} unless its server stopped.`;"
+    ].join('\n');
+    const discSc = patchMainProcessModule('dist/remote/disconnectedPage.js', discOrig);
+    assert.match(discSc, /重新连接/);
+    assert.match(discSc, /停止服务/);
+    assert.match(discSc, /已断开连接/);
+    assert.match(discSc, /已断开与 \$\{host\} 的连接/);
+
+    const cbOrig = [
+        "const SIGNED_IN = page('You have successfully authenticated.', 'You can close this tab and return to Antigravity.');",
+        "return page(\"Sign-in didn't finish\", `Antigravity couldn't reach ${host} to finish signing in. ` +",
+        "'Sign in again from Antigravity.');"
+    ].join('\n');
+    const cbSc = patchMainProcessModule('dist/remote/signInCallback.js', cbOrig);
+    assert.match(cbSc, /您已成功完成身份验证。/);
+    assert.match(cbSc, /登录未完成/);
+});
