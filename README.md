@@ -27,7 +27,7 @@
 
 ## 获取方式与分平台发行包
 
-Windows 与 macOS **分开打包、独立发行**，各自只包含本平台所需脚本与运行时，互不混入对方平台文件。请使用已登录且有访问权限的 GitHub 账户从本私有仓库获取。
+Windows 与 macOS **分开打包、独立发行**，各自只包含本平台所需脚本与运行时，互不混入对方平台文件。
 
 ### 方式 A：下载对应平台的离线便携包（推荐）
 
@@ -166,7 +166,7 @@ cd Antigravity2CN
   - 优先级：`--no-proxy` > `--proxy <url>` > `updater.json` 中保存的 `proxy` > 环境变量 `HTTPS_PROXY` / `HTTP_PROXY`（遵循 `NO_PROXY`）。
   - 仅下载 Release 中的轻量跨平台载荷包 `antigravity2cn-payload.zip`（约 150–300 KB，不触碰运行中的 `.runtime/`），强制校验 `.sha256`、清单逐文件 SHA-256、路径白名单、JS 语法与词典完整性，失败自动回滚；若新版修改了外壳脚本或升级了 Node.js 运行时，会自动中止并提示下载完整平台包。
   - 启动/安装前可选自动检查默认 24 小时冷却、5 秒超时，**网络或代理失败绝不阻塞正常启动或安装**；单次传入 `--no-update-check` 可跳过当次自动检查。
-  - 若仓库当前为私有仓库，可通过环境变量 `ANTIGRAVITY2CN_GITHUB_TOKEN` 提供仅限本仓库只读权限的 PAT（跨域重定向至资产 CDN 时会自动剥离认证头）；公开仓库无需任何 Token。
+  - 公开仓库在线更新无需任何 Token；如遇到 GitHub API 匿名速率限制，也可按需通过环境变量 `ANTIGRAVITY2CN_GITHUB_TOKEN` 提供只读 PAT（跨域重定向至资产 CDN 时会自动剥离认证头）。
 
 ### 命令行参数
 
